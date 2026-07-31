@@ -65,10 +65,19 @@ const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[+d]);
 
 const getImageUrl = (imagePath?: string): string => {
   if (!imagePath) return "/placeholder.jpg";
-  if (imagePath.startsWith("http")) return imagePath;
-  if (imagePath.startsWith("/uploads"))
-    return `http://localhost:5001${imagePath}`;
-  return `http://localhost:5001/uploads/${imagePath}`;
+  // تصاویر خارجی (غیر localhost) را بدون تغییر برگردان
+  if (imagePath.startsWith("http") && !imagePath.includes("localhost:5001")) return imagePath;
+  // جایگزینی localhost با آدرس واقعی بک‌اند Railway
+  const backendBase = (
+    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001"
+  );
+  if (imagePath.startsWith("http://localhost:5001")) {
+    return imagePath.replace("http://localhost:5001", backendBase);
+  }
+  if (imagePath.startsWith("/uploads")) {
+    return backendBase + imagePath;
+  }
+  return imagePath;
 };
 
 const formatRelativeDate = (dateString: string): string => {
