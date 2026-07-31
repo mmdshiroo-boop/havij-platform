@@ -1,4 +1,3 @@
-// backend/src/controllers/bulkAd.controller.ts
 import { Response } from "express";
 import { Ad } from "../models/Ad.model";
 import fs from "fs";
@@ -21,10 +20,38 @@ import { Category } from "../models";
 const adsUploadDir = path.resolve(process.cwd(), "uploads", "ads");
 const watermarkPath = path.resolve(process.cwd(), "assets", "watermark.png");
 
+// ══════════════════════════════════════════════
+// ۰.۱ ابزار اجرای موازی
+// ══════════════════════════════════════════════
+
 /**
- * دانلود تصویر با https/http ماژول (سازگار با همه نسخه‌های Node)
- * هدرهای مرورگر واقعی + Referer صحیح برای عبور از CDN
+ * اجرای همزمان چند Promise با سقف concurrency
  */
+async function asyncPool<T>(
+  concurrency: number,
+  items: T[],
+  iteratorFn: (item: T, index: number) => Promise<any>,
+): Promise<any[]> {
+  const ret: Promise<any>[] = [];
+  const executing: Promise<any>[] = [];
+  for (const [i, item] of items.entries()) {
+    const p = Promise.resolve().then(() => iteratorFn(item, i));
+    ret.push(p);
+    if (concurrency <= items.length) {
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1)) as any;
+      executing.push(e);
+      if (executing.length >= concurrency) {
+        await Promise.race(executing);
+      }
+    }
+  }
+  return Promise.all(ret);
+}
+
+// ══════════════════════════════════════════════
+// ۰.۲ دانلود تصویر (بدون تغییر)
+// ══════════════════════════════════════════════
+
 function downloadImageBuffer(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let referer = url;
@@ -95,7 +122,7 @@ function downloadImageBuffer(url: string): Promise<Buffer> {
 }
 
 /**
- * دانلود تصویر از URL + اعمال واترمارک + ذخیره محلی
+ * دانلود تصویر از URL + اعمال واترمارک + ذخیره محلی (بدون تغییر)
  */
 async function downloadAndWatermarkImage(
   imageUrl: string,
@@ -166,20 +193,16 @@ async function downloadAndWatermarkImage(
 }
 
 /**
- * پردازش تمام تصاویر یک آگهی — دانلود + واترمارک
+ * پردازش تصاویر یک آگهی به صورت موازی (۴ تصویر هم‌زمان)
  */
 async function processAdImages(
   images: string[],
   adIndex: number,
 ): Promise<string[]> {
   if (!Array.isArray(images) || images.length === 0) return images;
-
-  const processed: string[] = [];
-  for (let i = 0; i < images.length; i++) {
-    const result = await downloadAndWatermarkImage(images[i], adIndex, i);
-    processed.push(result);
-  }
-  return processed;
+  return asyncPool(4, images, (url, idx) =>
+    downloadAndWatermarkImage(url, adIndex, idx),
+  );
 }
 
 // ══════════════════════════════════════════════
@@ -258,7 +281,6 @@ function detectPriceType(d: any, attrs: Record<string, string>): string {
   const attrPrice = attrs["قیمت کل"] || attrs["قیمت"] || attrs["ودیعه"];
   if (attrPrice && /توافقی|رایگان/i.test(String(attrPrice))) return "negotiable";
 
-  // اگر بعد از همه بررسی‌ها قیمت نهایی صفر ماند، آن‌گاه توافقی در نظر گرفته می‌شود
   const finalPrice = extractPrice(d, attrs);
   if (finalPrice === 0) return "negotiable";
 
@@ -479,8 +501,9 @@ function mapToAdPayload(
 }
 
 // ══════════════════════════════════════════════
-// ۵. کنترلر اصلی (اصلاح‌شده با پاسخ نهایی و مدیریت خطاهای JSON)
+// ۵. کنترلر اصلی (بدون تغییر)
 // ══════════════════════════════════════════════
+
 export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?._id;
@@ -586,8 +609,12 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ══════════════════════════════════════════════
+// ۶. پردازش نهایی آگهی‌ها (نسخه موازی)
+// ══════════════════════════════════════════════
+
 /**
- * پردازش نهایی آگهی‌ها (واترمارک + ذخیره) – نتایج را برمی‌گرداند
+ * پردازش نهایی آگهی‌ها (واترمارک + ذخیره) – با اجرای موازی ۵ آگهی هم‌زمان
  */
 async function processAndSaveAds(
   items: { item: any; fileName: string; index: number }[],
@@ -601,15 +628,11 @@ async function processAndSaveAds(
     errors: 0,
     skipped: 0,
     watermarkApplied: 0,
-    details: [] as Array<{
-      file?: string;
-      row?: string;
-      index?: number;
-      message: string;
-    }>,
+    details: [] as any[],
   };
 
-  for (const { item, fileName, index } of items) {
+  // پردازش ۵ آگهی به‌طور هم‌زمان
+  await asyncPool(5, items, async ({ item, fileName, index }) => {
     const identifier = `${fileName}[${index}]`;
     try {
       // ۱. تشخیص دسته‌بندی
@@ -644,10 +667,10 @@ async function processAndSaveAds(
           index: index + 1,
           message: "آگهی به دلیل نداشتن اطلاعات کافی رد شد.",
         });
-        continue;
+        return;
       }
 
-      // ۴. واترمارک تصاویر
+      // ۴. واترمارک تصاویر (موازی داخلی)
       if (Array.isArray(adPayload.images) && adPayload.images.length > 0) {
         console.log(
           `🖼️ پردازش ${adPayload.images.length} تصویر برای: ${adPayload.title.substring(0, 40)}`,
@@ -656,9 +679,7 @@ async function processAndSaveAds(
         const watermarkedCount = adPayload.images.filter((img: string) =>
           img.includes("/uploads/ads/bulk-"),
         ).length;
-        if (watermarkedCount > 0) {
-          results.watermarkApplied += watermarkedCount;
-        }
+        results.watermarkApplied += watermarkedCount;
       }
 
       // ۵. ذخیره آگهی
@@ -685,7 +706,7 @@ async function processAndSaveAds(
         message: itemErr.message,
       });
     }
-  }
+  });
 
   // ۷. ارسال نوتیفیکیشن نهایی به کارشناس
   if (results.success > 0) {
@@ -708,5 +729,5 @@ async function processAndSaveAds(
     `🏁 پردازش فله‌ای به پایان رسید: ${results.success} موفق، ${results.watermarkApplied} واترمارک، ${results.skipped} رد شده، ${results.errors} خطا`,
   );
 
-  return results; // ← نتیجه را برمی‌گردانیم
+  return results;
 }
