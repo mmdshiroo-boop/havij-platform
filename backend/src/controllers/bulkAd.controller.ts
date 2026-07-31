@@ -256,23 +256,31 @@ function detectPriceType(d: any, attrs: Record<string, string>): string {
   if (/توافقی|negotiable|رایگان|free/i.test(priceStr)) return "negotiable";
 
   const attrPrice = attrs["قیمت کل"] || attrs["قیمت"] || attrs["ودیعه"];
-  if (attrPrice && /توافقی|رایگان/i.test(String(attrPrice)))
-    return "negotiable";
+  if (attrPrice && /توافقی|رایگان/i.test(String(attrPrice))) return "negotiable";
 
-  if (parseNumber(d.price) === 0 && !extractPriceFromText(d.description)) {
-    return "negotiable";
-  }
+  // اگر بعد از همه بررسی‌ها قیمت نهایی صفر ماند، آن‌گاه توافقی در نظر گرفته می‌شود
+  const finalPrice = extractPrice(d, attrs);
+  if (finalPrice === 0) return "negotiable";
 
   return "fixed";
 }
 
 function extractPrice(d: any, attrs: Record<string, string>): number {
-  if (typeof d.price === "number" && d.price > 0) return d.price;
-  if (typeof d.price === "string" && /^[\d,،٫.\s]+$/.test(d.price.trim())) {
+  // ۱. اگر rawJsonLd.price برای شیپور موجود باشد (دقیق‌ترین)
+  if (d.rawJsonLd?.price && typeof d.rawJsonLd.price === 'number' && d.rawJsonLd.price > 0) {
+    return d.rawJsonLd.price;
+  }
+
+  // ۲. اگر d.price خود یک عدد بزرگ‌تر از صفر باشد
+  if (typeof d.price === 'number' && d.price > 0) return d.price;
+
+  // ۳. اگر d.price رشته‌ای باشد و فقط شامل ارقام و جداکننده باشد
+  if (typeof d.price === 'string' && /^[\d,،٫.\s]+$/.test(d.price.trim())) {
     const n = parseNumber(d.price);
     if (n > 0) return n;
   }
 
+  // ۴. استخراج از attributes (برای دیوار و موارد مشابه)
   const fromAttrs =
     parseNumber(attrs["قیمت کل"]) ||
     parseNumber(attrs["قیمت"]) ||
@@ -285,12 +293,14 @@ function extractPrice(d: any, attrs: Record<string, string>): number {
     parseNumber(attrs["آخر هفته"]);
   if (fromAttrs > 0) return fromAttrs;
 
+  // ۵. جستجوی قیمت در متن توضیحات و عنوان
   const fromDesc = extractPriceFromText(d.description);
   if (fromDesc) return fromDesc;
 
   const fromTitle = extractPriceFromText(d.title);
   if (fromTitle) return fromTitle;
 
+  // ۶. اگر هیچکدام یافت نشد
   return 0;
 }
 
