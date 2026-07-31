@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment variables (هرگز کامیت نشوند)
+.env
+.env.local
+.env.production
+
+# Build outputs
+frontend/.next/
+backend/dist/
+*.tsbuildinfo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Uploads (دایرکتوری فایل‌های آپلودی در بک‌اند)
+backend/uploads/

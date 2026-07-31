@@ -1,0 +1,320 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* پس‌زمینه و متن اصلی - کنتراست بالا برای لایت مود */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 10%;
+
+    /* کارت‌ها و پاپ‌اوورها */
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    /* رنگ‌های اصلی و ثانویه */
+    --primary: 22 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 190 85% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* رنگ‌های ثانویه و باکس‌های جستجو (Muted) */
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%; /* تیره‌تر شد تا placeholder خوانا باشد */
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 10% 10%;
+
+    /* رنگ هشدار/حذف */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* حاشیه‌ها و اینپوت‌ها */
+    --border: 240 6% 88%;
+    --input: 240 6% 88%; /* تفکیک بهتر باکس جستجو در لایت مود */
+    --ring: 22 95% 50%;
+
+    --radius: 0.75rem;
+
+    /* اسکرول‌بار لایت */
+    --scrollbar-bg: #f4f4f5;
+    --scrollbar-thumb: #d4d4d8;
+
+    /* سایه‌ها */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg:
+      0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-xl:
+      0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  }
+
+  .dark {
+    /* پس‌زمینه و متن اصلی - دارک نرم برای جلوگیری از خستگی چشم */
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    /* کارت‌ها و پاپ‌اوورها */
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    /* رنگ‌های اصلی و ثانویه */
+    --primary: 22 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 190 85% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* رنگ‌های ثانویه و باکس‌های جستجو (Muted) */
+    --muted: 240 5% 16%; /* روشن‌تر از بک‌گراند برای تفکیک باکس سرچ */
+    --muted-foreground: 240 5% 65%; /* روشن‌تر شد تا آیکون و متن سرچ دیده شود */
+    --accent: 240 5% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    /* رنگ هشدار/حذف */
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* حاشیه‌ها و اینپوت‌ها */
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: 22 95% 50%;
+
+    /* اسکرول‌بار دارک */
+    --scrollbar-bg: #09090b;
+    --scrollbar-thumb: #27272a;
+
+    /* سایه‌ها (در دارک مود سایه‌ها باید غلیظ‌تر باشند تا دیده شوند) */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.6);
+    --shadow-card:
+      0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    font-family: "Vazirmatn", system-ui, sans-serif;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+  }
+}
+
+/* --- Leaflet و Marker Clusters --- */
+.marker-cluster-small {
+  background-color: rgba(249, 115, 22, 0.6);
+}
+.marker-cluster-medium {
+  background-color: rgba(249, 115, 22, 0.7);
+}
+.marker-cluster-large {
+  background-color: rgba(249, 115, 22, 0.8);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Scrollbar سفارشی --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 20px;
+  border: 2px solid var(--scrollbar-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  filter: brightness(0.85);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 0.7)
+  );
+  border-radius: 10px;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) hsl(var(--muted) / 0.3);
+}
+
+/* --- Leaflet نقشه --- */
+.leaflet-container {
+  z-index: 1 !important;
+}
+.leaflet-pane {
+  z-index: 1 !important;
+}
+.leaflet-control {
+  z-index: 10 !important;
+}
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.leaflet-popup-tip-container {
+  display: none !important;
+}
+
+/* --- Shimmer Effect (اسکلتون لودینگ) --- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.15) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* --- Utilities --- */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevation {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* --- SweetAlert2 (تنظیم فونت) --- */
+.swal2-popup,
+.swal2-title,
+.swal2-html-container,
+.swal2-confirm,
+.swal2-cancel {
+  font-family: "Vazirmatn", "Vazir", sans-serif !important;
+}
+
+/* --- تنظیمات پرینت --- */
+@media print {
+  nav,
+  sidebar,
+  button,
+  input,
+  select,
+  .no-print {
+    display: none !important;
+  }
+  body,
+  .main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+/* globals.css - اضافه کردن در انتهای فایل */
+
+/* استایل پاپ‌آپ Leaflet */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 12px 16px !important;
+  min-width: 200px !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* --- حذف لوگو، پرچم و متن کپی‌رایت Leaflet --- */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* --- استایل پاپ‌آپ Leaflet هماهنگ با تم پروژه --- */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-xl) !important; /* استفاده از متغیر سایه خودتان */
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: 260px !important; /* عرض ثابت برای ظاهر یکپارچه */
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-close-button {
+  display: none !important; /* بستن پیش‌فرض را حذف می‌کنیم تا UI خودمان را بگذاریم */
+}

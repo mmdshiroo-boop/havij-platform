@@ -1,0 +1,91 @@
+import axios from "axios";
+import { Request } from "express";
+
+interface IPInfo {
+  ip: string;
+  country: string;
+  countryCode: string;
+  region: string;
+  city: string;
+  isp: string;
+  proxy: boolean;
+  hosting: boolean;
+}
+
+class VPNDetectorService {
+  private cache: Map<string, { data: IPInfo; timestamp: number }> = new Map();
+  private CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+
+  /**
+   * تشخیص اطلاعات IP با کش
+   */
+  async getIPInfo(ip: string): Promise<IPInfo | null> {
+    const cached = this.cache.get(ip);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+    try {
+      const { data } = await axios.get(`https://ipapi.co/${ip}/json/`, {
+        timeout: 3000, // ۳ ثانیه تایم‌اوت برای درخواست به API خارجی
+      });
+      const info: IPInfo = {
+        ip: data.ip,
+        country: data.country_name,
+        countryCode: data.country_code,
+        region: data.region,
+        city: data.city,
+        isp: data.org,
+        proxy: data.proxy || false,
+        hosting: data.hosting || false,
+      };
+      this.cache.set(ip, { data: info, timestamp: Date.now() });
+      return info;
+    } catch (error) {
+      console.warn(`⚠️ VPN detection failed for IP ${ip}:`, error.message);
+      return null; // در صورت خطا، شناسایی انجام نشه و درخواست ادامه پیدا کنه
+    }
+  }
+
+  /**
+   * تشخیص IP کاربر از request
+   */
+  getClientIP(req: Request): string {
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = forwarded
+      ? typeof forwarded === "string"
+        ? forwarded.split(",")[0]
+        : forwarded[0]
+      : req.socket.remoteAddress;
+
+    return ip?.replace("::ffff:", "") || "unknown";
+  }
+
+  /**
+   * بررسی اینکه IP متعلق به VPN/Proxy است
+   */
+  async isVPN(ip: string): Promise<boolean> {
+    const info = await this.getIPInfo(ip);
+    return info ? info.proxy || info.hosting : false;
+  }
+
+  /**
+   * بررسی اینکه IP از ایران است
+   */
+  async isIranIP(ip: string): Promise<boolean> {
+    const info = await this.getIPInfo(ip);
+    return info?.countryCode === "IR";
+  }
+
+  /**
+   * بررسی اینکه IP از کشورهای خاص است
+   */
+  async isAllowedCountry(
+    ip: string,
+    allowedCountries: string[],
+  ): Promise<boolean> {
+    const info = await this.getIPInfo(ip);
+    return info ? allowedCountries.includes(info.countryCode) : false;
+  }
+}
+
+export const vpnDetectorService = new VPNDetectorService();

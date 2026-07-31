@@ -1,0 +1,543 @@
+// components/filters/ExpertAdAdvancedFilter.tsx
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  RotateCcw,
+  Filter,
+  MapPin,
+  Home,
+  DollarSign,
+  Ruler,
+  Calendar,
+  Grid3X3,
+  Building,
+  Sparkles,
+} from "lucide-react";
+import { useExpertAdFilter } from "@/hooks/useExpertAdFilter";
+import apiClient from "@/services/api/client";
+import {
+  MarketFilterValues,
+  BUILDING_AGE_OPTIONS,
+  PRICE_RANGE_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
+  ROOMS_COUNT_OPTIONS,
+  SIZE_RANGE_OPTIONS,
+} from "./marketFilter.types";
+
+// ── Helper Components ──────────────────────────
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  icon,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && (
+        <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+          {icon}
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          dir="rtl"
+          className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400"
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-orange-500">{icon}</span>
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        {title}
+      </p>
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────
+interface ExpertAdAdvancedFilterProps {
+  initialValues?: Partial<MarketFilterValues>;
+  onApply: (values: MarketFilterValues) => void;
+  onReset?: () => void;
+  loading?: boolean;
+  className?: string;
+  triggerLabel?: string;
+}
+
+export function ExpertAdAdvancedFilter({
+  initialValues,
+  onApply,
+  onReset,
+  loading = false,
+  className = "",
+  triggerLabel = "فیلتر پیشرفته آگهی‌ها",
+}: ExpertAdAdvancedFilterProps) {
+  const {
+    isOpen,
+    filters,
+    activeTags,
+    hasActiveFilters,
+    activeCount,
+    openModal,
+    closeModal,
+    updateFilter,
+    resetFilters,
+    applyFilters,
+    removeTag,
+    clearAllFilters,
+  } = useExpertAdFilter({ initialValues, onApply });
+
+  const [provinceOptions, setProvinceOptions] = useState<
+    { value: string; label: string }[]
+  >([{ value: "", label: "همه استان‌ها" }]);
+  const [cityOptions, setCityOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [regionOptions, setRegionOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [districtOptions, setDistrictOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // دریافت استان‌ها
+  useEffect(() => {
+    apiClient
+      .get("/market/neshan-provinces")
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const options = [{ value: "", label: "همه استان‌ها" }];
+          res.data.data.forEach((p: any) => {
+            options.push({ value: p.name, label: p.name });
+          });
+          setProvinceOptions(options);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // دریافت مناطق
+  useEffect(() => {
+    apiClient
+      .get("/market/regions")
+      .then((res) => {
+        if (res.data?.success) {
+          const regions: string[] = res.data.data;
+          setRegionOptions(
+            regions.map((r) => ({
+              value: r,
+              label: r === "همه" ? "همه مناطق" : r,
+            })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // دریافت شهرها
+  const fetchCities = useCallback(
+    async (provinceName: string) => {
+      if (!provinceName || provinceName === "همه استان‌ها") {
+        setCityOptions([]);
+        updateFilter("city", "");
+        return;
+      }
+      setLoadingCities(true);
+      try {
+        const res = await apiClient.get("/market/neshan-cities-list", {
+          params: { province: provinceName },
+        });
+        if (res.data?.success) {
+          const cities = res.data.data.map((c: any) => ({
+            value: c.name,
+            label: c.name,
+          }));
+          setCityOptions(cities);
+          if (
+            cities.length > 0 &&
+            (!filters.city ||
+              !cities.find(
+                (c: { value: string; label: string }) =>
+                  c.value === filters.city,
+              ))
+          ) {
+            updateFilter("city", cities[0].value);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch cities", e);
+      } finally {
+        setLoadingCities(false);
+      }
+    },
+    [filters.city, updateFilter],
+  );
+
+  // دریافت محله‌ها
+  const fetchDistricts = useCallback(
+    async (cityName: string) => {
+      if (!cityName) {
+        setDistrictOptions([{ value: "none", label: "همه محله‌ها" }]);
+        updateFilter("district", "none");
+        return;
+      }
+      try {
+        const res = await apiClient.get("/market/neshan-districts-list", {
+          params: { city: cityName },
+        });
+        if (res.data?.success) {
+          const districts = res.data.data
+            .filter((d: any) => d.name && d.name !== "همه محله‌ها")
+            .map((d: any) => ({ value: d.name, label: d.name }));
+          setDistrictOptions([
+            { value: "none", label: "همه محله‌ها" },
+            ...districts,
+          ]);
+          if (!districts.find((d: any) => d.value === filters.district)) {
+            updateFilter("district", "none");
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch districts", e);
+      }
+    },
+    [filters.district, updateFilter],
+  );
+
+  const handleProvinceChange = (province: string) => {
+    updateFilter("province", province);
+    updateFilter("city", "");
+    updateFilter("district", "none");
+    fetchCities(province);
+  };
+
+  const handleCityChange = (city: string) => {
+    updateFilter("city", city);
+    updateFilter("district", "none");
+    fetchDistricts(city);
+  };
+
+  useEffect(() => {
+    if (filters.province) fetchCities(filters.province);
+  }, []);
+
+  useEffect(() => {
+    if (filters.city) fetchDistricts(filters.city);
+  }, [filters.city, fetchDistricts]);
+
+  // Modal animation
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldMount, setShouldMount] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldMount(true);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setIsVisible(true)),
+      );
+    } else {
+      setIsVisible(false);
+      const t = setTimeout(() => setShouldMount(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) closeModal();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, closeModal]);
+
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  const handleReset = () => {
+    resetFilters();
+    onReset?.();
+  };
+
+  return (
+    <div
+      className={`inline-block ${className}`}
+      dir="rtl"
+      style={{ fontFamily: "Vazirmatn, system-ui, sans-serif" }}
+    >
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={openModal}
+        className="relative flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50/60 transition-all shadow-sm"
+      >
+        <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
+        <span>{triggerLabel}</span>
+        {hasActiveFilters && (
+          <span className="absolute -top-2 -left-2 min-w-[20px] h-5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-md shadow-orange-200 ring-2 ring-white">
+            {activeCount > 9 ? "+۹" : activeCount}
+          </span>
+        )}
+      </button>
+
+      {/* Modal */}
+      {shouldMount && (
+        <div
+          className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 transition-all duration-300 ease-out ${
+            isVisible ? "opacity-100" : "opacity-0"
+          }`}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+            onClick={closeModal}
+          />
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            className={`relative bg-white w-full sm:max-w-3xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[88vh] transition-all duration-300 ease-out ${
+              isVisible
+                ? "translate-y-0 sm:scale-100"
+                : "translate-y-10 sm:scale-95"
+            }`}
+          >
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center border border-orange-100">
+                  <Filter className="w-4 h-4 text-orange-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">
+                    فیلتر آگهی‌ها
+                  </h2>
+                  <p className="text-xs text-gray-400">
+                    جستجوی پیشرفته در آگهی‌های تأیید شده
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Active Tags */}
+            {hasActiveFilters && (
+              <div className="px-5 py-3 bg-orange-50/70 border-b border-orange-100 flex-shrink-0 flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-400 ml-1">فعال:</span>
+                {activeTags.map((tag) => (
+                  <span
+                    key={tag.key}
+                    className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-200 rounded-full px-3 py-1 text-xs font-medium"
+                  >
+                    {tag.displayValue}
+                    <button
+                      onClick={() => removeTag(tag.key)}
+                      className="w-3.5 h-3.5 rounded-full bg-orange-200 hover:bg-orange-400 hover:text-white text-orange-600 flex items-center justify-center"
+                    >
+                      <X className="w-2 h-2 stroke-[3]" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={clearAllFilters}
+                  className="mr-auto flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full px-3 py-1"
+                >
+                  <X className="w-3 h-3" /> پاک کردن همه
+                </button>
+              </div>
+            )}
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-6">
+              {/* Property Type */}
+              <section>
+                <SectionHeader
+                  icon={<Building className="w-3.5 h-3.5" />}
+                  title="نوع ملک"
+                />
+                <FilterSelect
+                  label=""
+                  value={filters.propertyType}
+                  onChange={(v) => updateFilter("propertyType", v)}
+                  options={PROPERTY_TYPE_OPTIONS}
+                  icon={<Home className="w-3.5 h-3.5 text-orange-500" />}
+                />
+              </section>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Location */}
+              <section>
+                <SectionHeader
+                  icon={<MapPin className="w-3.5 h-3.5" />}
+                  title="موقعیت"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FilterSelect
+                    label="استان"
+                    value={filters.province}
+                    onChange={handleProvinceChange}
+                    options={provinceOptions}
+                    icon={<MapPin className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                      <Building className="w-3.5 h-3.5 text-orange-500" /> شهر
+                    </label>
+                    {loadingCities ? (
+                      <div className="h-9 bg-gray-100 rounded-xl animate-pulse" />
+                    ) : (
+                      <FilterSelect
+                        label=""
+                        value={filters.city}
+                        onChange={handleCityChange}
+                        options={
+                          cityOptions.length > 0
+                            ? cityOptions
+                            : [
+                                {
+                                  value: "",
+                                  label: "ابتدا استان را انتخاب کنید",
+                                },
+                              ]
+                        }
+                      />
+                    )}
+                  </div>
+                  <FilterSelect
+                    label="منطقه"
+                    value={filters.region}
+                    onChange={(v) => updateFilter("region", v)}
+                    options={
+                      regionOptions.length > 0
+                        ? regionOptions
+                        : [{ value: "همه", label: "همه مناطق" }]
+                    }
+                    icon={<MapPin className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                  <FilterSelect
+                    label="محله"
+                    value={filters.district}
+                    onChange={(v) => updateFilter("district", v)}
+                    options={districtOptions}
+                    icon={<Grid3X3 className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                </div>
+              </section>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Property Features */}
+              <section>
+                <SectionHeader
+                  icon={<Building className="w-3.5 h-3.5" />}
+                  title="ویژگی‌های ملک"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <FilterSelect
+                    label="بازه قیمت"
+                    value={filters.priceRange}
+                    onChange={(v) => updateFilter("priceRange", v)}
+                    options={PRICE_RANGE_OPTIONS}
+                    icon={
+                      <DollarSign className="w-3.5 h-3.5 text-orange-500" />
+                    }
+                  />
+                  <FilterSelect
+                    label="متراژ"
+                    value={filters.sizeRange}
+                    onChange={(v) => updateFilter("sizeRange", v)}
+                    options={SIZE_RANGE_OPTIONS}
+                    icon={<Ruler className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                  <FilterSelect
+                    label="سن بنا"
+                    value={filters.buildingAge}
+                    onChange={(v) => updateFilter("buildingAge", v)}
+                    options={BUILDING_AGE_OPTIONS}
+                    icon={<Calendar className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                  <FilterSelect
+                    label="تعداد اتاق"
+                    value={filters.roomsCount}
+                    onChange={(v) => updateFilter("roomsCount", v)}
+                    options={ROOMS_COUNT_OPTIONS}
+                    icon={<Grid3X3 className="w-3.5 h-3.5 text-orange-500" />}
+                  />
+                </div>
+              </section>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
+              >
+                <RotateCcw className="w-4 h-4" /> بازنشانی
+              </button>
+              <button
+                onClick={applyFilters}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 disabled:opacity-50 shadow-md shadow-orange-200"
+              >
+                <Filter className="w-4 h-4" /> اعمال فیلترها
+                {hasActiveFilters && (
+                  <span className="bg-white/25 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

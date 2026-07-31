@@ -1,0 +1,337 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  Crown,
+  Eye,
+  FileText,
+  Heart,
+  BarChart3,
+  RefreshCw,
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  TrendingUp,
+} from "lucide-react";
+import Link from "next/link";
+import { StatCard } from "@/components/ui/stat-card";
+import { vipApi } from "@/services/api/vip.api";
+import type { VipStats } from "@/types";
+import apiClient from "@/services/api/client";
+import { toast } from "sonner";
+
+const formatMoney = (value: number) => {
+  if (!value) return "—";
+  if (value >= 1_000_000_000)
+    return `${(value / 1_000_000_000).toFixed(1)} میلیارد`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)} میلیون`;
+  return value.toLocaleString("fa-IR") + " تومان";
+};
+
+const daysLeft = (endDate: string | null | undefined): string => {
+  if (!endDate) return "نامشخص";
+  const now = new Date();
+  const end = new Date(endDate);
+  const diffTime = end.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return "پایان یافته";
+  return `${diffDays} روز`;
+};
+
+export default function VipDashboardPage() {
+  const [stats, setStats] = useState<VipStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [recentAds, setRecentAds] = useState<any[]>([]);
+  const [adsLoading, setAdsLoading] = useState(true);
+
+  const getImageUrl = (imagePath?: string): string => {
+    if (!imagePath) return "/placeholder.jpg";
+    if (imagePath.startsWith("http")) return imagePath;
+    const base =
+      process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+      "http://localhost:5001";
+    return `${base}${imagePath}`;
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(false);
+    setAdsLoading(true);
+    try {
+      const [statsData, adsRes] = await Promise.all([
+        vipApi.getStats(),
+        apiClient.get("/ads/user/me", { params: { limit: 5 } }),
+      ]);
+      setStats(statsData as VipStats);
+      setRecentAds(adsRes.data.data || []);
+    } catch (err) {
+      console.error("Error fetching VIP data:", err);
+      toast.error("خطا در دریافت اطلاعات داشبورد");
+      setError(true);
+    } finally {
+      setLoading(false);
+      setAdsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6" dir="rtl">
+        <Skeleton className="h-20 rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-36 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[...Array(2)].map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center py-20 gap-4"
+        dir="rtl"
+      >
+        <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+        </div>
+        <p className="text-muted-foreground font-medium">
+          متأسفانه اطلاعات بارگذاری نشد.
+        </p>
+        <Button
+          onClick={fetchData}
+          variant="outline"
+          className="gap-2 rounded-xl"
+        >
+          <RefreshCw className="w-4 h-4" />
+          تلاش مجدد
+        </Button>
+      </div>
+    );
+  }
+
+  const subscriptionEnd = stats?.subscriptionEndDate || null;
+
+  return (
+    <div className="space-y-6" dir="rtl">
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary/15 via-primary/5 to-transparent p-6 border border-primary/10 shadow-md">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-xl ring-1 ring-primary/20">
+              <Crown className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
+                داشبورد ویژه
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                آمار و اطلاعات کاربری شما
+              </p>
+            </div>
+          </div>
+          <Badge className="bg-primary text-white px-4 py-2 rounded-full text-xs font-bold gap-1.5 shadow-md shadow-primary/20">
+            <Crown className="w-3.5 h-3.5" />
+            {stats?.isVip ? "طرح ویژه فعال" : "کاربر ویژه"}
+          </Badge>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="آگهی‌های من"
+          value={stats?.totalAds ?? 0}
+          icon={FileText}
+          href="/panel/vip/my-ads"
+          description="کل آگهی‌های ثبت‌شده"
+        />
+
+        <StatCard
+          title="بازدیدها"
+        value={(stats?.views ?? 0).toLocaleString()}
+          icon={Eye}
+          href="/panel/vip/analytics"
+          // نمایش trend فقط در صورتی که:
+          // 1. weeklyGrowth وجود داشته باشد
+          // 2. totalViews بیشتر از 0 باشد (داده واقعی وجود داشته باشد)
+          trend={
+            stats?.weeklyGrowth !== undefined &&
+            stats?.weeklyGrowth !== null &&
+          (stats?.views ?? 0) > 0
+              ? {
+                  value: `${stats.weeklyGrowth >= 0 ? "+" : ""}${stats.weeklyGrowth}%`,
+                  isPositive: stats.weeklyGrowth >= 0,
+                }
+              : undefined
+          }
+          description="نسبت به هفته قبل"
+        />
+
+        <StatCard
+          title="ذخیره شده‌ها"
+          value={(stats?.savedAds ?? 0).toLocaleString()}
+          icon={Heart}
+          href="/panel/vip/bookmarks"
+          description="آگهی‌های نشان‌شده"
+        />
+
+        <StatCard
+          title="اعتبار اشتراک"
+          value={daysLeft(subscriptionEnd)}
+          icon={Calendar}
+          description={
+            subscriptionEnd
+              ? `تا ${new Date(subscriptionEnd).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" })}`
+              : "اطلاعات در دسترس نیست"
+          }
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link href="/panel/vip/analytics">
+          <Card className="transition-shadow bg-gradient-to-br from-amber-50/10 to-transparent shadow-md hover:shadow-lg border-border/50 cursor-pointer group">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm">آمار پیشرفته</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  مشاهده جزئیات بازدیدها
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/panel/vip/market-analysis">
+          <Card className="transition-shadow bg-gradient-to-br from-amber-50/10 to-transparent shadow-md hover:shadow-lg border-border/50 cursor-pointer group">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm">تحلیل بازار</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  بررسی روندها و تحلیل صنف
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Recent Ads */}
+      <Card className="transition-shadow bg-gradient-to-br from-amber-50/10 to-transparent shadow-md hover:shadow-lg border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-2">
+          <CardTitle className="text-base font-black flex items-center gap-2">
+            <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
+              <FileText className="w-4 h-4" />
+            </div>
+            آخرین آگهی‌های شما
+          </CardTitle>
+          <Link href="/panel/vip/my-ads">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary gap-1 rounded-xl text-xs"
+            >
+              مشاهده همه
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {adsLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : recentAds.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <div className="w-14 h-14 bg-muted/30 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <FileText className="w-7 h-7 opacity-40" />
+              </div>
+              <p className="text-sm font-bold">هیچ آگهی ثبت نکرده‌اید</p>
+              <Link href="/create-ad">
+                <Button variant="link" className="mt-2 text-primary font-bold">
+                  ثبت آگهی جدید
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentAds.map((ad) => (
+                <div
+                  key={ad._id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-muted/20 hover:bg-muted/30 transition-colors border border-border/30 gap-3 group"
+                >
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/30">
+                      <img
+                        src={getImageUrl(ad.images?.[0])}
+                        alt={ad.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder.jpg";
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{ad.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                        <span>{ad.city}</span>
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                        <span>
+                          {new Date(ad.createdAt).toLocaleDateString("fa-IR")}
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                        <span>{ad.views || 0} بازدید</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 sm:self-center">
+                    <p className="font-black text-primary tabular-nums text-sm">
+                      {formatMoney(ad.price)}
+                    </p>
+                    {ad.isVip && (
+                      <Badge className="bg-primary text-white text-[10px] gap-1 rounded-full px-3">
+                        <Crown className="w-3 h-3" />
+                        ویژه
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
