@@ -9,12 +9,12 @@ export const cookieAuditMiddleware = async (
 ) => {
   try {
     if (req.user && req.sessionId) {
-      // ✅ استفاده از req.ip (Express پس از trust proxy آن را از x-forwarded-for استخراج می‌کند)
-      const ip = req.ip || req.socket.remoteAddress || "unknown";
+      // ✅ استخراج IP واقعی از هدر x-forwarded-for
+      const forwarded = (req.headers["x-forwarded-for"] as string) || "";
+      const ip = forwarded.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
       const ua = req.headers["user-agent"] || "unknown";
       const fingerprint = CookieMonitorService.generateFingerprint(ip, ua);
 
-      // بررسی فعالیت مشکوک
       await CookieMonitorService.checkSuspiciousActivity(
         req.sessionId,
         fingerprint,
@@ -22,7 +22,6 @@ export const cookieAuditMiddleware = async (
         ua,
       );
 
-      // ثبت session_check برای درخواست‌های GET (جهت جلوگیری از overload)
       if (req.method === "GET") {
         await CookieMonitorService.logEvent({
           userId: req.user._id?.toString() || req.user.id,
@@ -37,7 +36,6 @@ export const cookieAuditMiddleware = async (
     }
   } catch (err) {
     console.error("Cookie audit middleware error:", err);
-    // ادامه می‌دهیم تا API از کار نیفتد
   }
   next();
 };

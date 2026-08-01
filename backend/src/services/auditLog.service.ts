@@ -1,4 +1,3 @@
-// backend/src/services/auditLog.service.ts
 import { AuditLog, AuditAction, IAuditLog } from "../models/AuditLog.model";
 import { Request } from "express";
 
@@ -20,6 +19,10 @@ export async function createAuditLog(
     ? params.resourceId[0]
     : params.resourceId;
 
+  // ✅ استخراج IP واقعی از هدر x-forwarded-for (با fallback به req.socket)
+  const forwarded = (params.req?.headers["x-forwarded-for"] as string) || "";
+  const ip = forwarded.split(",")[0]?.trim() || params.req?.socket?.remoteAddress;
+
   const log = new AuditLog({
     user: params.userId || null,
     action: params.action,
@@ -28,8 +31,7 @@ export async function createAuditLog(
     description: params.description,
     changes: params.changes,
     metadata: params.metadata,
-    // ✅ استفاده از req.ip (پس از trust proxy)
-    ip: params.req?.ip || params.req?.socket?.remoteAddress,
+    ip,
     userAgent: params.req?.headers["user-agent"],
   });
 

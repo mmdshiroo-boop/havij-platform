@@ -14,11 +14,8 @@ interface IPInfo {
 
 class VPNDetectorService {
   private cache: Map<string, { data: IPInfo; timestamp: number }> = new Map();
-  private CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+  private CACHE_DURATION = 1000 * 60 * 60;
 
-  /**
-   * تشخیص اطلاعات IP با کش
-   */
   async getIPInfo(ip: string): Promise<IPInfo | null> {
     const cached = this.cache.get(ip);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
@@ -46,37 +43,23 @@ class VPNDetectorService {
     }
   }
 
-  /**
-   * تشخیص IP کاربر از request
-   */
   getClientIP(req: Request): string {
-    // ✅ Express پس از trust proxy، req.ip را به‌درستی تنظیم می‌کند
-    return (req.ip || req.socket.remoteAddress)?.replace("::ffff:", "") || "unknown";
+    // ✅ استخراج IP واقعی از هدر x-forwarded-for
+    const forwarded = (req.headers["x-forwarded-for"] as string) || "";
+    return forwarded.split(",")[0]?.trim() || req.socket.remoteAddress?.replace("::ffff:", "") || "unknown";
   }
 
-  /**
-   * بررسی اینکه IP متعلق به VPN/Proxy است
-   */
   async isVPN(ip: string): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info ? info.proxy || info.hosting : false;
   }
 
-  /**
-   * بررسی اینکه IP از ایران است
-   */
   async isIranIP(ip: string): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info?.countryCode === "IR";
   }
 
-  /**
-   * بررسی اینکه IP از کشورهای خاص است
-   */
-  async isAllowedCountry(
-    ip: string,
-    allowedCountries: string[],
-  ): Promise<boolean> {
+  async isAllowedCountry(ip: string, allowedCountries: string[]): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info ? allowedCountries.includes(info.countryCode) : false;
   }
