@@ -1,37 +1,35 @@
 // components/ui/skeletons.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 
-// ✅ اسپینر تمام صفحه با لوگو و متن
+// ✅ اسپینر تمام صفحه با لوگوی هویج (در حال چرخش)
 export const FullPageSpinner = () => {
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50">      <div className="text-center space-y-6">
-        {/* لوگو */}
-        <div className="relative mx-auto">
-          <div className="flex justify-center">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary/20 rounded-full" />
-            <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        </div>
-        <h1 className="text-2xl py-3 font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          پلتفرم آگهی پلاک
-        </h1>
-
-        <p className="text-sm text-muted-foreground animate-pulse">
-          در حال بارگذاری...
-        </p>
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50">
+      <div className="text-center space-y-6">
+        {/* لوگوی هویج (تصویر از public/log.png) با انیمیشن چرخش */}
+        <div className="relative mx-auto w-24 h-24">
+          <img
+            src="/log.png"
+            alt="هویج"
+            className="w-full h-full object-contain animate-spin"
+          />
         </div>
 
         {/* عنوان */}
+        <h1 className="text-2xl font-black bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
+          پلتفرم آگهی هویچ
+        </h1>
 
-        {/* اسپینر */}
-        
+        {/* متن بارگذاری */}
+        <p className="text-sm text-muted-foreground animate-pulse">
+          در حال بارگذاری...
+        </p>
       </div>
     </div>
   );
 };
 
-// بقیه اسکلتون‌ها به همان صورت باقی می‌مانند...
+// بقیه اسکلتون‌ها بدون تغییر...
 export const HomePageSkeleton = () => {
   return (
     <div className="w-full max-w-[1400px] mx-auto px-4 py-4 md:py-6">
