@@ -26,7 +26,7 @@ class VPNDetectorService {
     }
     try {
       const { data } = await axios.get(`https://ipapi.co/${ip}/json/`, {
-        timeout: 3000, // ۳ ثانیه تایم‌اوت برای درخواست به API خارجی
+        timeout: 3000,
       });
       const info: IPInfo = {
         ip: data.ip,
@@ -42,7 +42,7 @@ class VPNDetectorService {
       return info;
     } catch (error) {
       console.warn(`⚠️ VPN detection failed for IP ${ip}:`, error.message);
-      return null; // در صورت خطا، شناسایی انجام نشه و درخواست ادامه پیدا کنه
+      return null;
     }
   }
 
@@ -50,14 +50,8 @@ class VPNDetectorService {
    * تشخیص IP کاربر از request
    */
   getClientIP(req: Request): string {
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = forwarded
-      ? typeof forwarded === "string"
-        ? forwarded.split(",")[0]
-        : forwarded[0]
-      : req.socket.remoteAddress;
-
-    return ip?.replace("::ffff:", "") || "unknown";
+    // ✅ Express پس از trust proxy، req.ip را به‌درستی تنظیم می‌کند
+    return (req.ip || req.socket.remoteAddress)?.replace("::ffff:", "") || "unknown";
   }
 
   /**

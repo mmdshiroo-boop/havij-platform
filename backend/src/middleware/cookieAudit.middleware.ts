@@ -9,6 +9,7 @@ export const cookieAuditMiddleware = async (
 ) => {
   try {
     if (req.user && req.sessionId) {
+      // ✅ استفاده از req.ip (Express پس از trust proxy آن را از x-forwarded-for استخراج می‌کند)
       const ip = req.ip || req.socket.remoteAddress || "unknown";
       const ua = req.headers["user-agent"] || "unknown";
       const fingerprint = CookieMonitorService.generateFingerprint(ip, ua);

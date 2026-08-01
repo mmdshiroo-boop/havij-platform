@@ -28,6 +28,7 @@ export async function createAuditLog(
     description: params.description,
     changes: params.changes,
     metadata: params.metadata,
+    // ✅ استفاده از req.ip (پس از trust proxy)
     ip: params.req?.ip || params.req?.socket?.remoteAddress,
     userAgent: params.req?.headers["user-agent"],
   });

@@ -19,10 +19,8 @@ export const apiLogger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const method = req.method;
   const endpoint = simplifyEndpoint(req.originalUrl);
-  const ip =
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.socket.remoteAddress ||
-    "unknown";
+  // ✅ استفاده از req.ip (Express پس از trust proxy آن را از x-forwarded-for استخراج می‌کند)
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
   const userAgent = req.headers["user-agent"] || "";
 
   // intercept res.json to capture status + body errors
@@ -69,7 +67,7 @@ export const apiLogger = (req: Request, res: Response, next: NextFunction) => {
       statusCode,
       responseTime: duration,
       userId: userId || undefined,
-      apiKeyId: hasApiKey ? undefined : undefined, // will be linked if apiKey middleware sets it
+      apiKeyId: hasApiKey ? undefined : undefined,
       apiKeyName: apiKeyName || (hasApiKey ? "API Key" : undefined),
       ip,
       userAgent,
