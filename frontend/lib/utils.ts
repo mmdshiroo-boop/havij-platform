@@ -5,40 +5,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// ==================== تابع تبدیل مسیر تصویر ====================
+// ==================== تابع واحد نمایش تصویر (همه‌جا از این استفاده شود) ====================
 export const getImageUrl = (imagePath?: string): string => {
   if (!imagePath) return "/placeholder.jpg";
 
-  // اگر آدرس کامل (http یا https) است
-  if (imagePath.startsWith("http")) return imagePath;
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
-
-  // اگر آدرس با /uploads شروع می‌شود
-  if (imagePath.startsWith("/uploads")) {
-    return `${baseUrl}${imagePath}`;
+  // اگر از قبل یک URL خارجی کامل است (غیر localhost) آن را برگردان
+  if (imagePath.startsWith("http") && !imagePath.includes("localhost:5001")) {
+    return imagePath;
   }
 
-  // اگر فقط نام فایل است
-  return `${baseUrl}/uploads/ads/${imagePath}`;
+  // استخراج آدرس پایه از متغیر محیطی API (بدون /api در انتها)
+  const backendBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api").replace(/\/api$/, "");
+
+  // جایگزینی localhost با Railway (اگر تصاویر قدیمی با localhost ذخیره شده‌اند)
+  if (imagePath.startsWith("http://localhost:5001")) {
+    return imagePath.replace("http://localhost:5001", backendBase);
+  }
+
+  // مسیرهای نسبی (با / شروع می‌شوند)
+  return `${backendBase}${imagePath}`;
 };
 
-// تابع دریافت آدرس کامل تصویر
+// تابع کمکی برای آواتار و مواردی که نیاز به URL کامل دارند
 export const getFullImageUrl = (imagePath?: string): string => {
   if (!imagePath) return "";
-
   if (imagePath.startsWith("http")) return imagePath;
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
-
-  let cleanPath = imagePath;
-  if (cleanPath.startsWith("/api")) {
-    cleanPath = cleanPath.replace("/api", "");
-  }
-
-  if (cleanPath.startsWith("/uploads")) {
-    return `${baseUrl}${cleanPath}`;
-  }
-
-  return `${baseUrl}/uploads/${cleanPath}`;
+  const backendBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api").replace(/\/api$/, "");
+  return `${backendBase}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
 };

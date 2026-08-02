@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +56,6 @@ export function ImagesLocationStep({
       setLoadingProvinces(true);
       try {
         const response = await locationApi.getProvinces();
-        // ✅ getProvinces آرایه برمی‌گرداند، نه شیء با data
         setProvinces(Array.isArray(response) ? response : []);
       } catch (error) {
         console.error("Error fetching provinces:", error);
@@ -80,7 +78,6 @@ export function ImagesLocationStep({
       try {
         const response =
           await locationApi.getCitiesByProvince(selectedProvinceId);
-        // ✅ getCitiesByProvince نیز آرایه برمی‌گرداند
         setCities(Array.isArray(response) ? response : []);
       } catch (error) {
         console.error("Error fetching cities:", error);
@@ -129,7 +126,7 @@ export function ImagesLocationStep({
 
       try {
         const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ads/upload-image`,
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api"}/ads/upload-image`,
           formData,
           {
             headers: {

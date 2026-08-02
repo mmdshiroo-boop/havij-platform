@@ -19,6 +19,22 @@ import { AdBreadcrumb } from "@/components/ad/AdBreadcrumb";
 import { AdActions } from "@/components/ad/AdActions";
 import { AdMap } from "@/components/ad/AdMap";
 
+// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه Railway
+const getImageUrl = (url: string) => {
+  if (!url) return "/placeholder.jpg";
+  const backendBase = (
+    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+    "http://localhost:5001"
+  );
+  if (url.startsWith("http://localhost:5001")) {
+    return url.replace("http://localhost:5001", backendBase);
+  }
+  if (url.startsWith("/")) {
+    return backendBase + url;
+  }
+  return url;
+};
+
 interface AdDetail {
   _id: string;
   title: string;
@@ -179,7 +195,7 @@ export default function AdDetailPage() {
       >
         {ad.images && ad.images.length > 0 ? (
           <img
-            src={ad.images[imgIdx] || "/placeholder.jpg"}
+            src={getImageUrl(ad.images[imgIdx] || "/placeholder.jpg")}
             alt={ad.title}
             className="w-full h-full object-cover"
           />
@@ -278,16 +294,6 @@ export default function AdDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7 mt-4">
         <div className="lg:col-span-2 space-y-5">
           <div className="hidden md:block">
-            <AdImageGallery
-              images={ad.images}
-              isModalOpen={modalOpen}
-              setIsModalOpen={setModalOpen}
-              currentIndex={imgIdx}
-              setCurrentIndex={setImgIdx}
-            />
-          </div>
-
-          <div className="hidden">
             <AdImageGallery
               images={ad.images}
               isModalOpen={modalOpen}

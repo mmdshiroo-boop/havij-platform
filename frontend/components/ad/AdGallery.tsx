@@ -19,27 +19,19 @@ interface AdImageGalleryProps {
   setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
-// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه واقعی Railway
+// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه Railway
 const getImageUrl = (url: string) => {
   if (!url) return "/placeholder.jpg";
-
-  // دامنه واقعی بک‌اند (بدون /api) را از متغیر محیطی می‌گیریم
   const backendBase = (
     process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
     "http://localhost:5001"
   );
-
-  // اگر آدرس با localhost شروع شده باشد، آن را با backendBase جایگزین می‌کنیم
   if (url.startsWith("http://localhost:5001")) {
     return url.replace("http://localhost:5001", backendBase);
   }
-
-  // اگر مسیر نسبی باشد (با / شروع شود)، دامنه را به ابتدا اضافه می‌کنیم
   if (url.startsWith("/")) {
     return backendBase + url;
   }
-
-  // در غیر این صورت (آدرس خارجی کامل یا placeholder) بدون تغییر برگردان
   return url;
 };
 
@@ -50,7 +42,6 @@ export default function AdImageGallery({
   currentIndex,
   setCurrentIndex,
 }: AdImageGalleryProps) {
-  // ... بقیه کد کاملاً دست‌نخورده (همان استیت‌ها، useEffectها و jsx)
   const [mounted, setMounted] = useState(false);
   const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
 

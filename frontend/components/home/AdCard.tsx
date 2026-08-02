@@ -63,12 +63,24 @@ const AD_TYPE_CONFIG: Record<
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[+d]);
 
+// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه Railway
 const getImageUrl = (imagePath?: string): string => {
   if (!imagePath) return "/placeholder.jpg";
-  if (imagePath.startsWith("http")) return imagePath;
-  if (imagePath.startsWith("/uploads"))
-    return `http://localhost:5001${imagePath}`;
-  return `http://localhost:5001/uploads/${imagePath}`;
+  const backendBase = (
+    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+    "http://localhost:5001"
+  );
+  // تصاویر خارجی (غیر localhost) را بدون تغییر برگردان
+  if (imagePath.startsWith("http") && !imagePath.includes("localhost:5001")) return imagePath;
+  // جایگزینی localhost با آدرس Railway
+  if (imagePath.startsWith("http://localhost:5001")) {
+    return imagePath.replace("http://localhost:5001", backendBase);
+  }
+  // اگر مسیر نسبی باشد (با / شروع شود)
+  if (imagePath.startsWith("/")) {
+    return backendBase + imagePath;
+  }
+  return imagePath;
 };
 
 const formatRelativeDate = (dateString: string): string => {
@@ -206,7 +218,6 @@ export function AdCard({
     <Link href={`/ad/${_id}`} className="block group">
       <div
         dir="rtl"
-        // کلاس‌های دسکتاپ دقیقاً ثابت ماندند. کلاس‌های موبایل با max-sm آغاز شده‌اند.
         className="flex flex-col h-full rounded-2xl border border-border/50 bg-card
                    shadow-sm hover:shadow-md hover:border-border transition-all duration-300 overflow-hidden
                    max-sm:flex-row-reverse max-sm:h-[140px] max-sm:rounded-none max-sm:border-0

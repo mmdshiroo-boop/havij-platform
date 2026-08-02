@@ -156,8 +156,8 @@ async function downloadAndWatermarkImage(
       fs.writeFileSync(filePath, imageBuffer);
     }
 
-    const port = process.env.PORT || 5001;
-    const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
+    // ✅ اصلاح: استفاده از MEDIA_BASE_URL (تنظیم در Railway)
+    const baseUrl = process.env.MEDIA_BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
     return `${baseUrl}/uploads/ads/${filename}`;
   } catch (err: any) {
     console.error(`❌ خطا در پردازش تصویر: ${err?.message}`);
