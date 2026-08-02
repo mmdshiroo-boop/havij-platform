@@ -1,7 +1,6 @@
-// frontend/components/SearchBox.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,6 +25,10 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 
+// ═══════════════════════════════════════════════════════════════
+// Types
+// ═══════════════════════════════════════════════════════════════
+
 interface SearchBoxProps {
   placeholder?: string;
   className?: string;
@@ -38,7 +41,10 @@ interface SearchBoxProps {
   }) => void;
 }
 
-// ─── دیکشنری تشخیص هوشمند کلمات کلیدی ───
+// ═══════════════════════════════════════════════════════════════
+// Constants
+// ═══════════════════════════════════════════════════════════════
+
 const SMART_KEYWORDS = {
   propertyTypes: [
     { key: "ویلا", value: "villa" },
@@ -67,24 +73,31 @@ const SMART_KEYWORDS = {
   ],
 };
 
-// ─── دریافت یا ایجاد شناسه یکتای کاربر میهمان ───
 const getOrCreateGuestId = (): string => {
   if (typeof window === "undefined") return "";
   let guestId = localStorage.getItem("app_guest_id");
   if (!guestId) {
-    guestId = "guest_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+    guestId =
+      "guest_" +
+      Math.random().toString(36).substring(2, 9) +
+      "_" +
+      Date.now();
     localStorage.setItem("app_guest_id", guestId);
   }
   return guestId;
 };
 
-export function SearchBox({
+// ═══════════════════════════════════════════════════════════════
+// SearchBoxInner — کامپوننت داخلی که useSearchParams دارد
+// ═══════════════════════════════════════════════════════════════
+
+function SearchBoxInner({
   placeholder = "جستجو در آگهی‌ها (مثلا: اجاره ویلا)...",
   className = "",
   onSearch,
 }: SearchBoxProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // ✅ اینجا امن است چون در Suspense wrap شده
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -107,37 +120,29 @@ export function SearchBox({
 
   const [isDetecting, setIsDetecting] = useState(false);
 
-  // ─── دریافت تمام استان‌ها از API بک‌اند ───
+  // دریافت استان‌ها
   useEffect(() => {
-    async function fetchProvinces() {
-      try {
-        const data = await locationApi.getProvinces();
-        setProvinces(data);
-      } catch (error) {
-        console.error("خطا در دریافت استان‌ها:", error);
-      }
-    }
-    fetchProvinces();
+    locationApi
+      .getProvinces()
+      .then(setProvinces)
+      .catch((error) => console.error("خطا در دریافت استان‌ها:", error));
   }, []);
 
-  // ─── دریافت شهرهای یک استان خاص بر اساس _id ───
+  // دریافت شهرها
   useEffect(() => {
-    async function fetchCities() {
-      if (!tempProvince?._id) {
-        setCities([]);
-        return;
-      }
-      try {
-        const data = await locationApi.getCitiesByProvince(tempProvince._id);
-        setCities(data);
-      } catch (error) {
-        console.error("خطا در دریافت شهرهای استان:", error);
-      }
+    if (!tempProvince?._id) {
+      setCities([]);
+      return;
     }
-    fetchCities();
+    locationApi
+      .getCitiesByProvince(tempProvince._id)
+      .then(setCities)
+      .catch((error) =>
+        console.error("خطا در دریافت شهرهای استان:", error)
+      );
   }, [tempProvince]);
 
-  // ─── همگام‌سازی URL با State ───
+  // همگام‌سازی URL با State
   useEffect(() => {
     const q = searchParams.get("q");
     const city = searchParams.get("city");
@@ -160,11 +165,15 @@ export function SearchBox({
     }
   }, [searchParams, provinces]);
 
-  // ─── اعمال جستجو و ارسال به سرور / URL ───
+  // اجرای جستجو
   const executeSearch = useCallback(
-    (searchQ?: string, searchCity?: string, searchProvinceId?: string) => {
+    (
+      searchQ?: string,
+      searchCity?: string,
+      searchProvinceId?: string
+    ) => {
       const params = new URLSearchParams();
-      let finalQ = searchQ?.trim() || "";
+      const finalQ = searchQ?.trim() || "";
 
       let smartPropertyType = "";
       let smartAdType = "";
@@ -182,7 +191,9 @@ export function SearchBox({
       if (searchCity) params.set("city", searchCity);
 
       const pId =
-        searchProvinceId !== undefined ? searchProvinceId : tempProvince?._id;
+        searchProvinceId !== undefined
+          ? searchProvinceId
+          : tempProvince?._id;
       if (pId) params.set("province", pId);
 
       if (smartPropertyType) params.set("propertyType", smartPropertyType);
@@ -207,7 +218,10 @@ export function SearchBox({
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    executeSearch(query.trim() || undefined, selectedCityName || undefined);
+    executeSearch(
+      query.trim() || undefined,
+      selectedCityName || undefined
+    );
   };
 
   const handleProvinceSelect = (provId: string, provName: string) => {
@@ -247,7 +261,7 @@ export function SearchBox({
     executeSearch(query.trim() || undefined, undefined, "");
   };
 
-  // ─── تابع ذخیره موقعیت در دیتابیس بک‌اند (کاربر یا میهمان) ───
+  // ذخیره موقعیت در بک‌اند
   const saveLocationToBackend = async (payload: {
     lat?: number;
     lng?: number;
@@ -255,11 +269,13 @@ export function SearchBox({
     city?: string;
   }) => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("token")
+          : null;
       const guestId = getOrCreateGuestId();
-
-      // استفاده از متغیر محیطی یا آدرس بک‌اند اصلی
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
       await axios.post(
         `${API_BASE_URL}/api/location/save-from-search`,
@@ -275,23 +291,20 @@ export function SearchBox({
         }
       );
     } catch (err) {
-      console.error("خطا در ثبت موقعیت مکانی در دیتابیس:", err);
+      console.error("خطا در ثبت موقعیت مکانی:", err);
     }
   };
-  // ─── تشخیص موقعیت مکانی هوشمند (فقط هنگام کلیک) ───
+
+  // تشخیص موقعیت مکانی
   const handleDetectLocation = () => {
     setIsDetecting(true);
 
     if (!navigator.geolocation) {
-      handleFallbackIP("مرورگر شما از GPS پشتیبانی نمی‌کند. در حال دریافت بر اساس IP...");
+      handleFallbackIP(
+        "مرورگر شما از GPS پشتیبانی نمی‌کند. در حال دریافت بر اساس IP..."
+      );
       return;
     }
-
-    const options = {
-      enableHighAccuracy: false, // جلوگیری از Timeout روی سیستم‌های بدون GPS
-      timeout: 10000,
-      maximumAge: 60000,
-    };
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -306,11 +319,13 @@ export function SearchBox({
             }
           );
           const data = await response.json();
-          const city = data.city || data.municipality_zone || "نامشخص";
+          const city =
+            data.city || data.municipality_zone || "نامشخص";
           const province = data.state || "نامشخص";
 
           const foundProvince = provinces.find(
-            (p) => p?.name?.includes(province) || province.includes(p?.name)
+            (p) =>
+              p?.name?.includes(province) || province.includes(p?.name)
           );
           const provinceId = foundProvince ? foundProvince._id : "";
 
@@ -327,9 +342,12 @@ export function SearchBox({
           setIsOpen(false);
 
           const finalCity = city !== "نامشخص" ? city : undefined;
-          executeSearch(query.trim() || undefined, finalCity, provinceId);
+          executeSearch(
+            query.trim() || undefined,
+            finalCity,
+            provinceId
+          );
 
-          // ارسال اطلاعات GPS به دیتابیس
           await saveLocationToBackend({
             lat: latitude,
             lng: longitude,
@@ -350,33 +368,35 @@ export function SearchBox({
       (error) => {
         let msg = "دریافت موقعیت بر اساس IP شبکه انجام شد.";
         if (error.code === error.PERMISSION_DENIED) {
-          msg = "دسترسی GPS مسدود است. موقعیت بر اساس IP شبکه ثبت شد.";
+          msg =
+            "دسترسی GPS مسدود است. موقعیت بر اساس IP شبکه ثبت شد.";
         }
         handleFallbackIP(msg);
       },
-      options
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
   };
 
-  // ─── تابع جایگزین هنگام رد دسترسی یا نبود GPS ───
   const handleFallbackIP = async (message: string) => {
     try {
       await saveLocationToBackend({});
       toast.info(message);
       setIsOpen(false);
-    } catch (e) {
+    } catch {
       toast.error("خطا در ثبت موقعیت شبکه.");
     } finally {
       setIsDetecting(false);
     }
   };
 
-  // ─── فیلتر استان‌ها و شهرها ───
+  // فیلتر
   const safeSearch = searchLocationQuery.trim();
   const filteredProvinces = provinces.filter((p) =>
     p?.name?.includes(safeSearch)
   );
-  const filteredCities = cities.filter((c) => c?.name?.includes(safeSearch));
+  const filteredCities = cities.filter((c) =>
+    c?.name?.includes(safeSearch)
+  );
 
   return (
     <form
@@ -392,6 +412,7 @@ export function SearchBox({
           >
             <Search className="h-5 w-5 transition-transform active:scale-95" />
           </button>
+
           <Input
             type="search"
             placeholder={placeholder}
@@ -399,6 +420,7 @@ export function SearchBox({
             onChange={(e) => setQuery(e.target.value)}
             className="w-full h-full border-0 bg-transparent px-1 text-foreground text-[14px] font-bold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 shadow-none"
           />
+
           {query && (
             <button
               type="button"
@@ -456,6 +478,7 @@ export function SearchBox({
               </div>
             </DialogHeader>
 
+            {/* تشخیص موقعیت */}
             <div className="p-4 pb-2 bg-muted/20 border-b border-border/40">
               <Button
                 type="button"
@@ -466,28 +489,33 @@ export function SearchBox({
               >
                 {isDetecting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" /> در
-                    حال بازیابی موقعیت فعلی شما...
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    در حال بازیابی موقعیت فعلی شما...
                   </>
                 ) : (
                   <>
-                    <MapPin className="h-4 w-4 text-primary fill-primary/10" />{" "}
+                    <MapPin className="h-4 w-4 text-primary fill-primary/10" />
                     شناسایی هوشمند شهر من (مکان‌یاب)
                   </>
                 )}
               </Button>
             </div>
 
+            {/* جستجوی مکان */}
             <div className="p-4 bg-muted/30 border-b border-border/60">
               <div className="relative flex items-center bg-card border border-border rounded-xl px-3 h-11 w-full focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-2" />
                 <input
                   type="text"
                   placeholder={
-                    step === "province" ? "جستجوی استان..." : "جستجوی شهر..."
+                    step === "province"
+                      ? "جستجوی استان..."
+                      : "جستجوی شهر..."
                   }
                   value={searchLocationQuery}
-                  onChange={(e) => setSearchLocationQuery(e.target.value)}
+                  onChange={(e) =>
+                    setSearchLocationQuery(e.target.value)
+                  }
                   className="w-full px-2 py-1 bg-transparent text-foreground placeholder:text-muted-foreground/60 outline-none text-sm font-medium"
                 />
                 {searchLocationQuery && (
@@ -499,6 +527,7 @@ export function SearchBox({
               </div>
             </div>
 
+            {/* لیست استان‌ها / شهرها */}
             <div className="max-h-[280px] overflow-y-auto p-3 pl-1.5 space-y-0.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary/60">
               {step === "province" && (
                 <>
@@ -515,12 +544,16 @@ export function SearchBox({
                     <span>همهٔ ایران</span>
                     <ChevronLeft className="w-4 h-4 text-primary" />
                   </button>
+
                   <div className="h-[1px] bg-border/60 my-1.5" />
+
                   {filteredProvinces.map((prov) => (
                     <button
                       key={prov._id}
                       type="button"
-                      onClick={() => handleProvinceSelect(prov._id, prov.name)}
+                      onClick={() =>
+                        handleProvinceSelect(prov._id, prov.name)
+                      }
                       className="flex items-center justify-between w-full px-4 py-3.5 text-sm font-bold rounded-xl text-popover-foreground text-right hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <span>{prov.name}</span>
@@ -529,6 +562,7 @@ export function SearchBox({
                   ))}
                 </>
               )}
+
               {step === "city" && (
                 <>
                   <button
@@ -553,7 +587,9 @@ export function SearchBox({
                       <Check className="w-4 h-4 text-primary" />
                     )}
                   </button>
+
                   <div className="h-[1px] bg-border/60 my-1.5" />
+
                   {filteredCities.map((city) => (
                     <button
                       key={city._id}
@@ -583,6 +619,7 @@ export function SearchBox({
               )}
             </div>
 
+            {/* دکمه‌های تایید */}
             <div className="p-4 bg-muted/40 border-t border-border flex items-center justify-end gap-3">
               <Button
                 type="button"
@@ -615,5 +652,38 @@ export function SearchBox({
         )}
       </div>
     </form>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SearchBox — کامپوننت بیرونی با Suspense
+// ✅ این همیشه export می‌شود و داخلش Suspense دارد
+// ═══════════════════════════════════════════════════════════════
+
+export function SearchBox({
+  placeholder,
+  className,
+  onSearch,
+}: SearchBoxProps) {
+  return (
+    <Suspense
+      fallback={
+        // Skeleton ساده هنگام بارگذاری
+        <div className={`w-full ${className}`}>
+          <div className="flex items-center bg-card border border-border rounded-2xl px-3 md:px-4 h-12 gap-3 animate-pulse">
+            <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
+            <div className="flex-1 h-4 bg-muted rounded-lg" />
+            <div className="w-[1px] h-6 bg-border" />
+            <div className="w-24 h-4 bg-muted rounded-lg shrink-0" />
+          </div>
+        </div>
+      }
+    >
+      <SearchBoxInner
+        placeholder={placeholder}
+        className={className}
+        onSearch={onSearch}
+      />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { adsApi, Ad } from "@/services/api/ads.api";
 import { categoryApi, Category } from "@/services/api/category.api";
@@ -9,7 +10,8 @@ import { FullPageSpinner } from "@/components/ui/skeletons";
 import { HeroSection } from "@/components/home/HeroSection";
 import { MobileCategories } from "@/components/mobile/mobile-categories";
 
-export default function HomePage() {
+// ✅ کامپوننت داخلی جداگانه
+function HomePageContent() {
   const [latestAds, setLatestAds] = useState<Ad[]>([]);
   const [urgentAds, setUrgentAds] = useState<Ad[]>([]);
   const [popularAds, setPopularAds] = useState<Ad[]>([]);
@@ -58,7 +60,6 @@ export default function HomePage() {
           <HeroSection />
         </div>
 
-        {/* بنر بالایی از اینجا حذف شد و به داخل AdFeed منتقل شد */}
         <AdFeed
           isFiltered={false}
           filterLoading={false}
@@ -86,5 +87,14 @@ export default function HomePage() {
         />
       </main>
     </div>
+  );
+}
+
+// ✅ صفحه اصلی با Suspense wrap شده
+export default function HomePage() {
+  return (
+    <Suspense fallback={<FullPageSpinner />}>
+      <HomePageContent />
+    </Suspense>
   );
 }
