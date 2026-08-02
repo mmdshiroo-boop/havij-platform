@@ -69,7 +69,7 @@ import { ThemeToggle } from "@/components/common/theme-toggle";
 import { SearchBox } from "../search/SearchBox";
 import { NotificationBell } from "../notifcation/NotificationBell";
 import { User } from "@/types";
-
+import { Suspense } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 interface MenuItem {
@@ -740,8 +740,10 @@ export function Header() {
         {/* === دسکتاپ === */}
         <div className="hidden lg:flex items-center justify-between w-full gap-6">
           <Logo />
-          <div className="flex-1 max-w-xl mx-auto w-full">
-            <SearchBox className="w-full" />
+        <div className="flex-1 max-w-xl mx-auto w-full">
+        <Suspense fallback={null}>
+         <SearchBox className="w-full" />
+          </Suspense>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/chat")}>
@@ -768,9 +770,11 @@ export function Header() {
             <MainNavMenu />
             <Logo small />
           </div>
-          <div className="flex-1 max-w-xs mx-1">
-            <SearchBox className="w-full" />
-          </div>
+       <div className="flex-1 max-w-xs mx-1">
+  <Suspense fallback={null}>
+    <SearchBox className="w-full" />
+  </Suspense>
+</div>
           <div className="flex items-center gap-1.5 shrink-0">
             <NotificationBell />
             <ThemeToggle />

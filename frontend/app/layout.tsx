@@ -8,6 +8,8 @@ import { SettingsProvider } from "./context/SettingsContext";
 import PageViewLogger from "@/components/ui/PageViewLogger";
 import { Toaster } from "sonner";
 
+export const dynamic = 'force-dynamic'; // ← این خط اضافه شد
+
 export const metadata: Metadata = {
   title: "پلتفرم آگهی هویج",
   description: "بزرگ‌ترین بازار کالا و خدمات",
@@ -19,12 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="fa"
-      dir="rtl"
-      suppressHydrationWarning
-      className="scroll-smooth"
-    >
+    <html lang="fa" dir="rtl" suppressHydrationWarning className="scroll-smooth">
       <head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
@@ -32,23 +29,14 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-
       <body className="font-vazirmatn antialiased min-h-screen bg-background text-foreground overflow-x-hidden">
         <AppProviders>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <SettingsProvider>
               <Suspense fallback={null}>
                 <PageViewLogger />
               </Suspense>
-
               {children}
-
-              {/* Toaster هویج */}
               <Toaster
                 position="top-center"
                 richColors={false}
