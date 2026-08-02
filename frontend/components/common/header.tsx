@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   User as UserIcon,
@@ -54,15 +55,11 @@ import {
   Briefcase,
   Factory,
   Package,
+  MapPin,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, getFullImageUrl } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   categoryApi,
   Category as CategoryType,
@@ -87,8 +84,7 @@ interface UserMenuProps {
   customMenuItems?: MenuItem[];
 }
 
-// ─── منوهای کاربری ───
-
+// ─── منوهای کاربری (بدون تغییر) ───
 const defaultMenuItems: MenuItem[] = [
   { icon: UserIcon, label: "پروفایل کاربری", href: "/panel/user/profile" },
   { icon: FileText, label: "آگهی‌های من", href: "/panel/user/my-ads" },
@@ -258,8 +254,7 @@ const superAdminMenuItems: MenuItem[] = [
   },
 ];
 
-// ─── کامپوننت منوی کاربر (UserMenu) ───
-
+// ─── UserMenu (بدون تغییر) ───
 export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -503,254 +498,17 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   );
 }
 
-export const getCategoryIcon = (iconName?: string) => {
-  const p = {
-    className:
-      "w-6 h-6 text-zinc-700 dark:text-zinc-200 transition-transform duration-300 group-hover:scale-110",
-  };
-  const map: Record<string, React.ReactNode> = {
-    Home: <Home {...p} />,
-    Car: <Car {...p} />,
-    Smartphone: <Smartphone {...p} />,
-    Sofa: <Sofa {...p} />,
-    Shirt: <Shirt {...p} />,
-    Wrench: <Wrench {...p} />,
-    Briefcase: <Briefcase {...p} />,
-    Factory: <Factory {...p} />,
-  };
-  return map[iconName ?? ""] ?? <Package {...p} />;
-};
-
-function SheetBody({
-  user,
-  userAvatarUrl,
-  avatarKey,
-  provinces,
-  citiesList,
-  selectedProvince,
-  selectedCity,
-  categories,
-  loadingCategories,
-  onProvinceChange,
-  onCityChange,
-  onCategoryClick,
-  onCreateAd,
-  onChat,
-  onSaved,
-  onPricing,
-  onLogout,
-}: {
-  user: User | null;
-  userAvatarUrl: string;
-  avatarKey: number;
-  provinces: Province[];
-  citiesList: City[];
-  selectedProvince: Province | null;
-  selectedCity: City | null;
-  categories: CategoryType[];
-  loadingCategories: boolean;
-  onProvinceChange: (p: Province) => void;
-  onCityChange: (c: City) => void;
-  onCategoryClick: (slug: string) => void;
-  onCreateAd: () => void;
-  onChat: () => void;
-  onSaved: () => void;
-  onPricing: () => void;
-  onLogout: () => void;
-}) {
-  return (
-    <div
-      className="flex-1 overflow-y-auto px-4 py-6 space-y-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-right"
-      dir="rtl"
-    >
-      {/* پروفایل / ورود */}
-      {user ? (
-        <div className="flex items-center gap-3 p-4 bg-zinc-100/80 dark:bg-muted/40 rounded-2xl border border-border/40 backdrop-blur-md transition-all hover:bg-muted/50">
-          <Avatar className="w-12 h-12 ring-2 ring-primary/20 shadow-lg rounded-full shrink-0">
-            <AvatarImage
-              key={avatarKey}
-              src={
-                userAvatarUrl
-                  ? `${userAvatarUrl}?t=${avatarKey}`
-                  : "/images/user.webp"
-              }
-              className="object-cover"
-            />
-            <AvatarFallback>
-              <img
-                src="/images/user.webp"
-                alt="avatar"
-                className="w-full h-full object-cover rounded-full"
-              />
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm truncate text-foreground tracking-tight">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="text-[11px] text-muted-foreground/80 font-mono mt-0.5">
-              {user.phone}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <Button
-          className="w-full h-11 rounded-xl font-bold bg-gradient-to-r from-primary to-primary/90 hover:opacity-85 shadow-sm active:scale-[0.98] transition-all"
-          onClick={onCreateAd}
-        >
-          ورود / ثبت‌نام
-        </Button>
-      )}
-
-      {/* موقعیت مکانی */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-extrabold text-muted-foreground/60 tracking-wider">
-          موقعیت مکانی
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <select
-            value={selectedProvince?._id ?? ""}
-            onChange={(e) => {
-              const p = provinces.find((x) => x._id === e.target.value);
-              if (p) onProvinceChange(p);
-            }}
-            className="p-2.5 rounded-xl border border-border/50 bg-zinc-100/80 dark:bg-muted/40 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer appearance-none text-center text-foreground"
-          >
-            <option value="">همه استان‌ها</option>
-            {provinces.map((item) => (
-              <option key={item._id} value={item._id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedCity?._id ?? ""}
-            disabled={!selectedProvince}
-            onChange={(e) => {
-              const c = citiesList.find((x) => x._id === e.target.value);
-              if (c) onCityChange(c);
-            }}
-            className="p-2.5 rounded-xl border border-border/50 bg-zinc-100/80 dark:bg-muted/40 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer appearance-none text-center text-foreground"
-          >
-            <option value="">همه شهرها</option>
-            {citiesList.map((item) => (
-              <option key={item._id} value={item._id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* دسته‌بندی‌ها */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-extrabold text-muted-foreground/60 tracking-wider">
-          دسته‌بندی‌ها
-        </p>
-        {loadingCategories ? (
-          <div className="grid grid-cols-2 gap-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-zinc-100/80 dark:bg-muted/40 animate-pulse rounded-xl h-11"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat._id}
-                onClick={() => onCategoryClick(cat.slug)}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-zinc-100/80 dark:bg-muted/30 hover:bg-primary/5 hover:text-primary transition-all text-xs text-right group active:scale-[0.97]"
-              >
-                <span className="text-muted-foreground group-hover:text-primary transition-colors shrink-0 scale-75">
-                  {getCategoryIcon(cat.icon)}
-                </span>
-                <span className="truncate font-semibold text-foreground/90 group-hover:text-primary">
-                  {cat.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* اکشن‌ها */}
-      <div className="space-y-2.5 pt-4 border-t border-border/40">
-        <Button
-          className="w-full gap-2 h-11 rounded-xl font-bold bg-gradient-to-r from-primary via-primary to-primary/90 text-white shadow-lg shadow-primary/10 hover:opacity-85 active:scale-[0.98] transition-all"
-          onClick={onCreateAd}
-        >
-          <PlusCircle className="h-4 w-4" />
-          ثبت آگهی رایگان
-        </Button>
-        <div className="grid grid-cols-3 gap-1.5">
-          <Button
-            variant="outline"
-            className="gap-1 rounded-xl h-10 border-border/80 hover:bg-muted/50 text-[11px] font-bold transition-all active:scale-[0.96]"
-            onClick={onChat}
-          >
-            <MessageCircle className="h-3.5 w-3.5 text-zinc-900 dark:text-zinc-100" />
-            پیام‌ها
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-1 rounded-xl h-10 border-border/80 hover:bg-muted/50 text-[11px] font-bold transition-all active:scale-[0.96]"
-            onClick={onSaved}
-          >
-            <Bookmark className="h-3.5 w-3.5 text-zinc-900 dark:text-zinc-100" />
-            ذخیره‌ها
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-1 rounded-xl h-10 border-border/80 hover:bg-muted/50 text-[11px] font-bold transition-all active:scale-[0.96]"
-            onClick={onPricing}
-          >
-            <Gem className="h-3.5 w-3.5 text-zinc-900 dark:text-zinc-100" />
-            اشتراک VIP
-          </Button>
-        </div>
-        {user && (
-          <Button
-            variant="ghost"
-            className="w-full gap-2 rounded-xl h-10 text-destructive hover:text-destructive hover:bg-destructive/5 text-xs font-bold mt-2 transition-all"
-            onClick={onLogout}
-          >
-            <LogOut className="h-4 w-4" /> خروج از حساب کاربری
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── کامپوننت اصلی Header ───
-
-export function Header() {
+// ─── منوی اصلی برای موبایل/تبلت (جدید) ───
+function MainNavMenu() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [citiesList, setCitiesList] = useState<City[]>([]);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [provinces, setProvinces] = useState<Province[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<Province | null>(
-    null,
-  );
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [avatarKey, setAvatarKey] = useState(Date.now());
-
-  useEffect(() => {
-    setAvatarKey(Date.now());
-  }, [user]);
-
-  useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     locationApi
@@ -777,75 +535,25 @@ export function Header() {
       .finally(() => setLoadingCategories(false));
   }, []);
 
-  const handleProvinceChange = async (province: Province) => {
-    setSelectedProvince(province);
-    setSelectedCity(null);
-    try {
-      const cities = await locationApi.getCitiesByProvince(province._id);
+  const handleProvinceChange = async (provinceId: string) => {
+    const p = provinces.find((x) => x._id === provinceId);
+    if (p) {
+      setSelectedProvince(p);
+      setSelectedCity(null);
+      const cities = await locationApi.getCitiesByProvince(p._id);
       setCitiesList(cities);
-    } catch {
-      /* noop */
     }
   };
 
   const handleLogout = () => {
     logout();
     router.push("/");
+    setOpen(false);
   };
 
-  const sharedBodyProps = {
-    user,
-    userAvatarUrl: user?.avatar ? getFullImageUrl(user.avatar) : "",
-    avatarKey,
-    provinces,
-    citiesList,
-    selectedProvince,
-    selectedCity,
-    categories,
-    loadingCategories,
-    onProvinceChange: handleProvinceChange,
-    onCityChange: (c: City) => setSelectedCity(c),
-    onCategoryClick: (slug: string) => {
-      router.push(`/category/${slug}`);
-      setIsMenuOpen(false);
-    },
-    onCreateAd: () => {
-      user ? router.push("/create-ad") : router.push("/auth");
-      setIsMenuOpen(false);
-    },
-    onChat: () => {
-      router.push("/chat");
-      setIsMenuOpen(false);
-    },
-    onSaved: () => {
-      router.push("/panel/user/bookmarks");
-      setIsMenuOpen(false);
-    },
-    onPricing: () => {
-      router.push("/pricing");
-      setIsMenuOpen(false);
-    },
-    onLogout: () => {
-      handleLogout();
-      setIsMenuOpen(false);
-    },
-  };
-
-  const Logo = ({ small = false }: { small?: boolean }) => {
-    return (
-      <Link href="/" className="flex items-center shrink-0" dir="rtl">
-        <img
-          src="/log.png"
-          alt="لوگو"
-          className={`object-contain ${small ? "w-[60px]" : "w-[150px]"} h-20`}
-        />
-      </Link>
-    );
-  };
-
-  const MobileSheetMenu = () => (
-    <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <SheetTrigger asChild>
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen} dir="rtl">
+      <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
@@ -853,28 +561,169 @@ export function Header() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-      </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="w-[290px] sm:w-[320px] p-0 flex flex-col h-full border-l border-border/40 bg-background/95 backdrop-blur-xl text-right"
-        dir="rtl"
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-[85vw] max-w-[360px] rounded-2xl p-4 border border-border/50 bg-background/95 backdrop-blur-xl shadow-xl max-h-[80vh] overflow-y-auto text-right"
+        align="start"
+        sideOffset={10}
       >
-        <div className="sr-only">
-          <SheetTitle>منوی ناوبری موبایل</SheetTitle>
-        </div>
-        <div className="p-4 pt-5 border-b border-border/40 flex items-center gap-3 bg-zinc-100/80 dark:bg-muted/40">
-          <div className="w-8 h-8 bg-gradient-to-tr from-primary to-orange-400 rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-primary-foreground font-black text-sm">
-              هـ
-            </span>
+        {/* پروفایل */}
+        {user ? (
+          <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl mb-3">
+            <Avatar className="w-10 h-10 ring-2 ring-primary/20 rounded-full">
+              <AvatarImage
+                src={
+                  user.avatar
+                    ? user.avatar.startsWith("http")
+                      ? user.avatar
+                      : `${API_BASE.replace("/api", "")}${user.avatar}`
+                    : "/images/user.webp"
+                }
+              />
+              <AvatarFallback>
+                <img src="/images/user.webp" className="w-full h-full object-cover rounded-full" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-right text-sm font-bold truncate">
+              {user.firstName} {user.lastName}
+              <p className="text-xs text-muted-foreground font-mono">{user.phone}</p>
+            </div>
           </div>
-          <p className="font-black text-sm text-foreground tracking-tight">
-            پلتفرم جامع آگهی هویج
-          </p>
+        ) : (
+          <Button
+            className="w-full mb-3"
+            onClick={() => { router.push("/auth"); setOpen(false); }}
+          >
+            ورود / ثبت‌نام
+          </Button>
+        )}
+
+        {/* موقعیت مکانی */}
+        <DropdownMenuLabel className="text-xs font-extrabold text-muted-foreground mt-2">موقعیت مکانی</DropdownMenuLabel>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <select
+            value={selectedProvince?._id ?? ""}
+            onChange={(e) => handleProvinceChange(e.target.value)}
+            className="p-2 rounded-xl border border-border/50 bg-muted/40 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">همه استان‌ها</option>
+            {provinces.map((p) => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedCity?._id ?? ""}
+            disabled={!selectedProvince}
+            onChange={(e) => {
+              const c = citiesList.find((x) => x._id === e.target.value);
+              if (c) setSelectedCity(c);
+            }}
+            className="p-2 rounded-xl border border-border/50 bg-muted/40 text-xs font-semibold disabled:opacity-40"
+          >
+            <option value="">همه شهرها</option>
+            {citiesList.map((c) => (
+              <option key={c._id} value={c._id}>{c.name}</option>
+            ))}
+          </select>
         </div>
-        <SheetBody {...sharedBodyProps} />
-      </SheetContent>
-    </Sheet>
+
+        {/* دسته‌بندی‌ها */}
+        <DropdownMenuLabel className="text-xs font-extrabold text-muted-foreground">دسته‌بندی‌ها</DropdownMenuLabel>
+        {loadingCategories ? (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-9 bg-muted/40 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {categories.map((cat) => (
+              <button
+                key={cat._id}
+                onClick={() => { router.push(`/category/${cat.slug}`); setOpen(false); }}
+                className="flex items-center gap-2 p-2 rounded-xl bg-muted/40 hover:bg-primary/5 hover:text-primary transition-all text-xs font-semibold"
+              >
+                <span className="text-muted-foreground group-hover:text-primary scale-75">
+                  {getCategoryIcon(cat.icon)}
+                </span>
+                <span className="truncate">{cat.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* اکشن‌ها */}
+        <div className="space-y-2 pt-2 border-t border-border/40">
+          <Button
+            className="w-full gap-2 h-10 rounded-xl font-bold bg-gradient-to-r from-primary to-primary/90 text-white"
+            onClick={() => { router.push(user ? "/create-ad" : "/auth"); setOpen(false); }}
+          >
+            <PlusCircle className="h-4 w-4" /> ثبت آگهی رایگان
+          </Button>
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => { router.push("/chat"); setOpen(false); }}>
+              <MessageCircle className="h-4 w-4" /> پیام‌ها
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { router.push("/panel/user/bookmarks"); setOpen(false); }}>
+              <Bookmark className="h-4 w-4" /> ذخیره‌ها
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { router.push("/pricing"); setOpen(false); }}>
+              <Gem className="h-4 w-4" /> اشتراک
+            </Button>
+          </div>
+          {user && (
+            <Button
+              variant="ghost"
+              className="w-full text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 ml-2" /> خروج
+            </Button>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export const getCategoryIcon = (iconName?: string) => {
+  const p = {
+    className:
+      "w-6 h-6 text-zinc-700 dark:text-zinc-200 transition-transform duration-300 group-hover:scale-110",
+  };
+  const map: Record<string, React.ReactNode> = {
+    Home: <Home {...p} />,
+    Car: <Car {...p} />,
+    Smartphone: <Smartphone {...p} />,
+    Sofa: <Sofa {...p} />,
+    Shirt: <Shirt {...p} />,
+    Wrench: <Wrench {...p} />,
+    Briefcase: <Briefcase {...p} />,
+    Factory: <Factory {...p} />,
+  };
+  return map[iconName ?? ""] ?? <Package {...p} />;
+};
+
+// ─── هدر اصلی ───
+export function Header() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const Logo = ({ small = false }: { small?: boolean }) => (
+    <Link href="/" className="flex items-center shrink-0" dir="rtl">
+      <img
+        src="/log.png"
+        alt="لوگو"
+        className={`object-contain ${small ? "w-[60px]" : "w-[150px]"} h-20`}
+      />
+    </Link>
   );
 
   return (
@@ -888,74 +737,40 @@ export function Header() {
       dir="rtl"
     >
       <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between gap-4 md:gap-6">
-        {/* === حالت دسکتاپ === */}
+        {/* === دسکتاپ === */}
         <div className="hidden lg:flex items-center justify-between w-full gap-6">
           <Logo />
           <div className="flex-1 max-w-xl mx-auto w-full">
             <SearchBox className="w-full" />
           </div>
-
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="ghost"
-              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground hover:text-primary hover:bg-muted/60 hover:opacity-85 active:scale-95 transition-all"
-              onClick={() => router.push("/chat")}
-            >
-              <MessageCircle className="h-[18px] w-[18px]" />
-              <span>پیام‌ها</span>
+            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/chat")}>
+              <MessageCircle className="h-[18px] w-[18px]" /> پیام‌ها
             </Button>
-
-            <Button
-              variant="ghost"
-              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground hover:text-primary hover:bg-muted/60 hover:opacity-85 active:scale-95 transition-all"
-              onClick={() => {
-                const role = user?.role || "user";
-                if (role === "admin" || role === "super_admin") {
-                  router.push("/admin/bookmarks");
-                } else {
-                  router.push(`/panel/${role}/bookmarks`);
-                }
-              }}
-            >
-              <Bookmark className="h-[18px] w-[18px]" />
-              <span>ذخیره‌شده‌ها</span>
+            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push(`/panel/${user?.role || "user"}/bookmarks`)}>
+              <Bookmark className="h-[18px] w-[18px]" /> ذخیره‌شده‌ها
             </Button>
-
-            <Button
-              variant="ghost"
-              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground hover:text-primary hover:bg-muted/60 hover:opacity-85 active:scale-95 transition-all"
-              onClick={() => router.push("/pricing")}
-            >
-              <Gem className="h-[17px] w-[17px]" />
-              <span>اشتراک VIP</span>
+            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/pricing")}>
+              <Gem className="h-[17px] w-[17px]" /> اشتراک VIP
             </Button>
-
             <ThemeToggle />
             <NotificationBell />
-
-
-            <Button
-              className="gap-2 rounded-xl h-9 px-4 text-xs font-bold bg-gradient-to-r from-primary to-primary/90 text-white shadow-md shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
-              onClick={() => router.push(user ? "/create-ad" : "/auth")}
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span>ثبت آگهی رایگان</span>
+            <Button className="gap-2 rounded-xl h-9 px-4 text-xs font-bold bg-gradient-to-r from-primary to-primary/90 text-white" onClick={() => router.push(user ? "/create-ad" : "/auth")}>
+              <PlusCircle className="h-4 w-4" /> ثبت آگهی
             </Button>
             <UserMenu />
           </div>
         </div>
 
-        {/* === حالت موبایل === */}
+        {/* === موبایل/تبلت === */}
         <div className="flex lg:hidden items-center justify-between w-full gap-3">
           <div className="flex items-center gap-2">
-            <MobileSheetMenu />
+            <MainNavMenu />
             <Logo small />
           </div>
-
           <div className="flex-1 max-w-xs mx-1">
             <SearchBox className="w-full" />
           </div>
-
           <div className="flex items-center gap-1.5 shrink-0">
             <NotificationBell />
             <ThemeToggle />

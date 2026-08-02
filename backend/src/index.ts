@@ -61,31 +61,15 @@ dotenv.config();
 
 const app = express();
 
-// 🔁 اعتماد به پروکسی Railway (برای CORS و کوکی‌های امن)
-app.set('trust proxy', 1);
-
 // ============================================================
 // میدل‌ورهای عمومی (Global Middlewares)
 // ============================================================
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.CLIENT_URL,
-  'http://localhost:3000'
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
-
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

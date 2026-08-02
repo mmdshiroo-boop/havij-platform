@@ -2,9 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   Design Tokens — پلتفرم هویج
+   ═══════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    /* پس‌زمینه و متن اصلی - کنتراست بالا برای لایت مود */
+    /* پس‌زمینه و متن اصلی */
     --background: 0 0% 100%;
     --foreground: 240 10% 10%;
 
@@ -14,46 +18,61 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
 
-    /* رنگ‌های اصلی و ثانویه */
+    /* رنگ اصلی — نارنجی هویج */
     --primary: 22 95% 50%;
     --primary-foreground: 0 0% 100%;
+
+    /* رنگ ثانویه — آبی */
     --secondary: 190 85% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    /* رنگ‌های ثانویه و باکس‌های جستجو (Muted) */
+    /* Muted */
     --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%; /* تیره‌تر شد تا placeholder خوانا باشد */
+    --muted-foreground: 240 4% 46%;
     --accent: 240 5% 96%;
     --accent-foreground: 240 10% 10%;
 
-    /* رنگ هشدار/حذف */
+    /* خطا / هشدار */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
+    /* موفقیت */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* هشدار */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* اطلاعات */
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+
     /* حاشیه‌ها و اینپوت‌ها */
     --border: 240 6% 88%;
-    --input: 240 6% 88%; /* تفکیک بهتر باکس جستجو در لایت مود */
+    --input: 240 6% 88%;
     --ring: 22 95% 50%;
 
     --radius: 0.75rem;
 
-    /* اسکرول‌بار لایت */
+    /* اسکرول‌بار */
     --scrollbar-bg: #f4f4f5;
     --scrollbar-thumb: #d4d4d8;
 
     /* سایه‌ها */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md:
-      0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-lg:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    --shadow-xl:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04),
+      0 0 0 1px rgba(0, 0, 0, 0.02);
   }
 
   .dark {
-    /* پس‌زمینه و متن اصلی - دارک نرم برای جلوگیری از خستگی چشم */
+    /* پس‌زمینه و متن اصلی */
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
@@ -63,38 +82,52 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
-    /* رنگ‌های اصلی و ثانویه */
+    /* رنگ اصلی — نارنجی هویج */
     --primary: 22 95% 50%;
     --primary-foreground: 0 0% 100%;
+
+    /* رنگ ثانویه — آبی */
     --secondary: 190 85% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    /* رنگ‌های ثانویه و باکس‌های جستجو (Muted) */
-    --muted: 240 5% 16%; /* روشن‌تر از بک‌گراند برای تفکیک باکس سرچ */
-    --muted-foreground: 240 5% 65%; /* روشن‌تر شد تا آیکون و متن سرچ دیده شود */
+    /* Muted */
+    --muted: 240 5% 16%;
+    --muted-foreground: 240 5% 65%;
     --accent: 240 5% 16%;
     --accent-foreground: 0 0% 98%;
 
-    /* رنگ هشدار/حذف */
+    /* خطا / هشدار */
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 98%;
+
+    /* موفقیت */
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 98%;
+
+    /* هشدار */
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 98%;
+
+    /* اطلاعات */
+    --info: 217 91% 55%;
+    --info-foreground: 0 0% 98%;
 
     /* حاشیه‌ها و اینپوت‌ها */
     --border: 240 5% 20%;
     --input: 240 5% 20%;
     --ring: 22 95% 50%;
 
-    /* اسکرول‌بار دارک */
+    /* اسکرول‌بار */
     --scrollbar-bg: #09090b;
     --scrollbar-thumb: #27272a;
 
-    /* سایه‌ها (در دارک مود سایه‌ها باید غلیظ‌تر باشند تا دیده شوند) */
+    /* سایه‌ها */
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.6);
-    --shadow-card:
-      0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 }
 
@@ -102,6 +135,7 @@
   * {
     @apply border-border;
   }
+
   html,
   body {
     font-family: "Vazirmatn", system-ui, sans-serif;
@@ -112,7 +146,179 @@
   }
 }
 
-/* --- Leaflet و Marker Clusters --- */
+/* ═══════════════════════════════════════════════════════════════
+   Sonner Toast — استایل‌های سفارشی هویج
+   ═══════════════════════════════════════════════════════════════ */
+
+/* فونت و جهت پایه */
+[data-sonner-toaster] {
+  --normal-bg: hsl(var(--card));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--foreground));
+  font-family: "Vazirmatn", system-ui, sans-serif !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  direction: rtl;
+  font-family: "Vazirmatn", system-ui, sans-serif !important;
+  border-radius: 14px !important;
+  padding: 14px 18px !important;
+  gap: 12px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* عنوان Toast */
+[data-sonner-toast] [data-title] {
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+/* توضیحات Toast */
+[data-sonner-toast] [data-description] {
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  opacity: 0.75 !important;
+  line-height: 1.6 !important;
+}
+
+/* ── موفقیت (Success) ── */
+[data-sonner-toast][data-type="success"] {
+  background: hsl(var(--success) / 0.08) !important;
+  border: 1px solid hsl(var(--success) / 0.18) !important;
+  color: hsl(var(--success)) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: hsl(var(--success)) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-description] {
+  color: hsl(var(--success) / 0.7) !important;
+}
+
+.dark [data-sonner-toast][data-type="success"] {
+  background: hsl(var(--success) / 0.12) !important;
+  border-color: hsl(var(--success) / 0.22) !important;
+}
+
+/* ── خطا (Error) ── */
+[data-sonner-toast][data-type="error"] {
+  background: hsl(var(--destructive) / 0.08) !important;
+  border: 1px solid hsl(var(--destructive) / 0.18) !important;
+  color: hsl(var(--destructive)) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] svg {
+  color: hsl(var(--destructive)) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-description] {
+  color: hsl(var(--destructive) / 0.7) !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] {
+  background: hsl(var(--destructive) / 0.12) !important;
+  border-color: hsl(var(--destructive) / 0.22) !important;
+}
+
+/* ── هشدار (Warning) ── */
+[data-sonner-toast][data-type="warning"] {
+  background: hsl(var(--warning) / 0.08) !important;
+  border: 1px solid hsl(var(--warning) / 0.18) !important;
+  color: hsl(var(--warning)) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] svg {
+  color: hsl(var(--warning)) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-description] {
+  color: hsl(var(--warning) / 0.7) !important;
+}
+
+.dark [data-sonner-toast][data-type="warning"] {
+  background: hsl(var(--warning) / 0.12) !important;
+  border-color: hsl(var(--warning) / 0.22) !important;
+}
+
+/* ── اطلاعات (Info) ── */
+[data-sonner-toast][data-type="info"] {
+  background: hsl(var(--info) / 0.08) !important;
+  border: 1px solid hsl(var(--info) / 0.18) !important;
+  color: hsl(var(--info)) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] svg {
+  color: hsl(var(--info)) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-description] {
+  color: hsl(var(--info) / 0.7) !important;
+}
+
+.dark [data-sonner-toast][data-type="info"] {
+  background: hsl(var(--info) / 0.12) !important;
+  border-color: hsl(var(--info) / 0.22) !important;
+}
+
+/* ── پیش‌فرض / Loading ── */
+[data-sonner-toast]:not([data-type]) {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-sonner-toast]:not([data-type]) [data-description] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* ── دکمه Close ── */
+[data-sonner-toast] [data-close-button] {
+  background: hsl(var(--muted)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* ── دکمه Action ── */
+[data-sonner-toast] [data-button] {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  padding: 6px 14px !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: hsl(var(--primary) / 0.88) !important;
+}
+
+/* ── ریسپانسیو موبایل ── */
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    --width: calc(100vw - 1.5rem) !important;
+    padding: 0 0.75rem !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] {
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Leaflet — نقشه
+   ═══════════════════════════════════════════════════════════════ */
+
 .marker-cluster-small {
   background-color: rgba(249, 115, 22, 0.6);
 }
@@ -123,19 +329,64 @@
   background-color: rgba(249, 115, 22, 0.8);
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.leaflet-container {
+  z-index: 1 !important;
+}
+.leaflet-pane {
+  z-index: 1 !important;
+}
+.leaflet-control {
+  z-index: 10 !important;
 }
 
-/* --- Scrollbar سفارشی --- */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.leaflet-popup-tip-container {
+  display: none !important;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-xl) !important;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: 260px !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.custom-popup .leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Scrollbar سفارشی
+   ═══════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -173,32 +424,10 @@
   scrollbar-color: hsl(var(--primary)) hsl(var(--muted) / 0.3);
 }
 
-/* --- Leaflet نقشه --- */
-.leaflet-container {
-  z-index: 1 !important;
-}
-.leaflet-pane {
-  z-index: 1 !important;
-}
-.leaflet-control {
-  z-index: 10 !important;
-}
-.leaflet-popup-content-wrapper {
-  padding: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: 16px !important;
-  overflow: hidden;
-}
-.leaflet-popup-content {
-  margin: 0 !important;
-  width: auto !important;
-}
-.leaflet-popup-tip-container {
-  display: none !important;
-}
+/* ═══════════════════════════════════════════════════════════════
+   Shimmer Effect — اسکلتون لودینگ
+   ═══════════════════════════════════════════════════════════════ */
 
-/* --- Shimmer Effect (اسکلتون لودینگ) --- */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -207,6 +436,7 @@
     background-position: 200% 0;
   }
 }
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -218,7 +448,38 @@
   animation: shimmer 1.5s infinite;
 }
 
-/* --- Utilities --- */
+/* ═══════════════════════════════════════════════════════════════
+   SweetAlert2 — فونت
+   ═══════════════════════════════════════════════════════════════ */
+
+.swal2-popup,
+.swal2-title,
+.swal2-html-container,
+.swal2-confirm,
+.swal2-cancel {
+  font-family: "Vazirmatn", "Vazir", sans-serif !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Screen Reader Only
+   ═══════════════════════════════════════════════════════════════ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Utilities
+   ═══════════════════════════════════════════════════════════════ */
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -231,16 +492,10 @@
   }
 }
 
-/* --- SweetAlert2 (تنظیم فونت) --- */
-.swal2-popup,
-.swal2-title,
-.swal2-html-container,
-.swal2-confirm,
-.swal2-cancel {
-  font-family: "Vazirmatn", "Vazir", sans-serif !important;
-}
+/* ═══════════════════════════════════════════════════════════════
+   Print
+   ═══════════════════════════════════════════════════════════════ */
 
-/* --- تنظیمات پرینت --- */
 @media print {
   nav,
   sidebar,
@@ -263,58 +518,4 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-}
-/* globals.css - اضافه کردن در انتهای فایل */
-
-/* استایل پاپ‌آپ Leaflet */
-.custom-popup .leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-}
-
-.custom-popup .leaflet-popup-content {
-  margin: 12px 16px !important;
-  min-width: 200px !important;
-}
-
-.custom-popup .leaflet-popup-tip {
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-}
-
-.custom-popup .leaflet-popup-close-button {
-  display: none !important;
-}
-
-/* --- حذف لوگو، پرچم و متن کپی‌رایت Leaflet --- */
-.leaflet-control-attribution {
-  display: none !important;
-}
-
-/* --- استایل پاپ‌آپ Leaflet هماهنگ با تم پروژه --- */
-.custom-popup .leaflet-popup-content-wrapper {
-  border-radius: 16px !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  box-shadow: var(--shadow-xl) !important; /* استفاده از متغیر سایه خودتان */
-  background: hsl(var(--card)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-}
-
-.custom-popup .leaflet-popup-content {
-  margin: 0 !important;
-  width: 260px !important; /* عرض ثابت برای ظاهر یکپارچه */
-}
-
-.custom-popup .leaflet-popup-tip {
-  background: hsl(var(--card)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-}
-
-.custom-popup .leaflet-popup-close-button {
-  display: none !important; /* بستن پیش‌فرض را حذف می‌کنیم تا UI خودمان را بگذاریم */
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authApi } from "@/services/api/auth.api";
+import { useAuth } from "@/app/context/AuthContext";
 import { toast } from "sonner";
 import {
   Smartphone,
@@ -13,12 +14,21 @@ import {
   Send,
   User,
   CheckCircle2,
-  Loader2,
-  AlertCircle,
   Lock,
   Eye,
   EyeOff,
 } from "lucide-react";
+import {
+  AuthField,
+  AuthError,
+  AuthButton,
+  OtpCountdown,
+  AuthDivider,
+  StepIndicator,
+  PasswordStrength,
+  authInputClass,
+} from "./AuthShared";
+import { cn } from "@/lib/utils";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -33,55 +43,37 @@ export function RegisterForm({ onSuccess, onLoginClick }: RegisterFormProps) {
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [countdown]);
+  const { login } = useAuth();
+  const router = useRouter();
 
-  const startCountdown = () => {
-    setCountdown(120);
-  };
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setInterval(() => setCountdown((p) => p - 1), 1000);
+    return () => clearInterval(t);
+  }, [countdown]);
 
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || !phone.match(/^09[0-9]{9}$/)) {
-      setError("شماره موبایل وارد شده معتبر نیست");
+    if (!phone.match(/^09[0-9]{9}$/)) {
+      setError("شماره موبایل معتبر نیست");
       return;
     }
-
     setLoading(true);
     setError("");
-
     try {
       await authApi.sendCode(phone);
       setStep("code");
-      startCountdown();
-      toast.success("کد تایید ارسال شد", {
-        description: "کد ۶ رقمی به شماره موبایل شما ارسال گردید",
-      });
+      setCountdown(120);
+      toast.success("کد تایید ارسال شد");
     } catch (err: any) {
-      if (err.response?.data?.message?.includes("قبلاً")) {
-        toast.error("شماره موبایل تکراری است", {
-          description:
-            "این شماره موبایل قبلاً ثبت‌نام کرده است. لطفا وارد شوید.",
-        });
-        setError("این شماره موبایل قبلاً ثبت‌نام کرده است");
-      } else {
-        const errMsg = err.response?.data?.message || "خطا در ارسال کد";
-        toast.error(errMsg);
-        setError(errMsg);
-      }
+      const msg = err.response?.data?.message || "خطا در ارسال کد";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -89,50 +81,53 @@ export function RegisterForm({ onSuccess, onLoginClick }: RegisterFormProps) {
 
   const verifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || code.length !== 6) {
-      setError("لطفاً کد تایید ۶ رقمی را وارد کنید");
+    if (code.length !== 6) {
+      setError("کد ۶ رقمی را کامل وارد کنید");
       return;
     }
-    if (!firstName || !lastName) {
-      setError("وارد کردن نام و نام خانوادگی الزامی است");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("نام و نام خانوادگی الزامی است");
       return;
     }
-    if (!password || password.length < 6) {
+    if (password.length < 6) {
       setError("رمز عبور باید حداقل ۶ کاراکتر باشد");
       return;
     }
     if (password !== confirmPassword) {
-      setError("رمز عبور و تاییدیه آن مطابقت ندارند");
+      setError("رمز عبور و تکرار آن مطابقت ندارند");
       return;
     }
-
     setLoading(true);
     setError("");
-
     try {
-      // ارسال اطلاعات بدون کد ملی به متد بک‌اند
       const response = await authApi.verifyCode({
         phone,
         code,
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         password,
       });
-
       if (response.success) {
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response.data));
-        toast.success("ثبت‌نام با موفقیت انجام شد", {
-          description: `خوش آمدید ${firstName} ${lastName}`,
+        // ✅ از متد login در AuthContext استفاده می‌کنیم
+        login(response.token, response.data);
+
+        toast.success("ثبت‌نام موفق", {
+          description: `${firstName} ${lastName} خوش آمدید!`,
         });
-        onSuccess?.();
+
+        setTimeout(() => {
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.replace("/");
+            router.refresh();
+          }
+        }, 300);
       }
     } catch (err: any) {
-      const errorMsg =
-        err.response?.data?.message ||
-        "کد تایید یا اطلاعات وارد شده نامعتبر است";
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const msg = err.response?.data?.message || "اطلاعات نامعتبر است";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -141,214 +136,184 @@ export function RegisterForm({ onSuccess, onLoginClick }: RegisterFormProps) {
   const resendCode = async () => {
     if (countdown > 0) return;
     setLoading(true);
-    setError("");
     try {
       await authApi.resendCode(phone);
-      startCountdown();
-      toast.success("کد جدید مجدداً ارسال شد");
+      setCountdown(120);
+      toast.success("کد مجدداً ارسال شد");
     } catch (err: any) {
-      const errMsg = err.response?.data?.message || "خطا در ارسال مجدد";
-      setError(errMsg);
-      toast.error(errMsg);
+      toast.error(err.response?.data?.message || "خطا در ارسال مجدد");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="w-full space-y-6" dir="rtl">
-      {step === "phone" && (
-        <form
-          onSubmit={sendCode}
-          className="space-y-5 animate-in fade-in-50 duration-200"
-        >
-          <div className="space-y-1.5 text-center sm:text-right">
-            <h3 className="text-lg font-black text-foreground">
-              ایجاد حساب کاربری
-            </h3>
-            <p className="text-xs font-medium text-muted-foreground">
-              برای شروع ثبت‌نام اولیه، شماره موبایل خود را وارد کنید.
-            </p>
-          </div>
+  if (step === "phone") {
+    return (
+      <div className="space-y-5" dir="rtl">
+        <StepIndicator currentStep={0} totalSteps={2} />
 
-          <div className="space-y-2">
-            <Label
-              htmlFor="register-phone"
-              className="text-xs font-bold text-muted-foreground mr-1"
-            >
-              شماره موبایل
-            </Label>
-            <div className="relative">
-              <Smartphone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
-              <Input
-                id="register-phone"
-                type="tel"
-                maxLength={11}
-                placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-                value={phone}
-                onChange={(e) =>
-                  setPhone(e.target.value.replace(/[^0-9]/g, ""))
-                }
-                dir="ltr"
-                className="pr-10 h-11 text-left tracking-wider font-bold rounded-xl bg-card border-border placeholder:text-right placeholder:text-xs placeholder:font-medium placeholder:tracking-normal focus-visible:ring-primary/20"
-                autoFocus
-              />
-            </div>
-          </div>
+        <div className="space-y-1.5">
+          <h2 className="text-[17px] font-black text-foreground">
+            ایجاد حساب جدید
+          </h2>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
+            شماره موبایل خود را وارد کنید تا کد تایید ارسال شود.
+          </p>
+        </div>
 
-          {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-xs font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={loading || phone.length < 11}
-            className="w-full h-11 rounded-xl font-bold text-xs bg-primary hover:bg-primary/95 text-primary-foreground transition-all active:scale-[0.98] shadow-sm gap-2"
+        <form onSubmit={sendCode} className="space-y-4">
+          <AuthField
+            id="reg-phone"
+            label="شماره موبایل"
+            icon={<Smartphone className="w-4 h-4" />}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                در حال ارسال کد...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 shrink-0" />
-                ارسال کد تایید
-              </>
-            )}
-          </Button>
+            <Input
+              id="reg-phone"
+              type="tel"
+              inputMode="numeric"
+              maxLength={11}
+              placeholder="09123456789"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+              dir="ltr"
+              className={cn(authInputClass, "pr-11")}
+              autoFocus
+            />
+          </AuthField>
 
-          <div className="text-center text-xs pt-2">
-            <span className="text-muted-foreground font-medium">
-              حساب کاربری دارید؟
-            </span>{" "}
-            <button
-              type="button"
-              onClick={onLoginClick}
-              className="text-primary font-black hover:underline underline-offset-4 transition-all"
-            >
-              وارد شوید
-            </button>
-          </div>
+          <AnimatePresence>
+            {error && <AuthError message={error} />}
+          </AnimatePresence>
+
+          <AuthButton
+            loading={loading}
+            disabled={phone.length < 11}
+            label="ارسال کد تایید"
+            icon={<Send className="w-4 h-4" />}
+          />
         </form>
-      )}
 
-      {step === "code" && (
-        <form
-          onSubmit={verifyCode}
-          className="space-y-4 animate-in fade-in-50 duration-200"
-        >
+        <AuthDivider />
+
+        <p className="text-center text-[13px] text-muted-foreground">
+          قبلاً ثبت‌نام کرده‌اید؟{" "}
           <button
             type="button"
-            onClick={() => {
-              setStep("phone");
-              setError("");
-            }}
-            className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors mb-2"
+            onClick={onLoginClick}
+            className="text-primary font-bold hover:underline underline-offset-4 transition-colors"
           >
-            <ArrowRight className="w-3.5 h-3.5" />
-            تغییر شماره موبایل ({phone})
+            وارد شوید
           </button>
+        </p>
+      </div>
+    );
+  }
 
-          <div className="space-y-1.5 text-center sm:text-right mb-4">
-            <h3 className="text-lg font-black text-foreground">
-              تکمیل اطلاعات ثبت‌نام
-            </h3>
-            <p className="text-xs font-medium text-muted-foreground">
-              کد تایید ارسال شده و اطلاعات هویتی و رمز عبور خود را وارد نمایید.
-            </p>
-          </div>
+  return (
+    <div className="space-y-4" dir="rtl">
+      <StepIndicator currentStep={1} totalSteps={2} />
 
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="register-code"
-              className="text-xs font-bold text-muted-foreground mr-1"
+      <button
+        type="button"
+        onClick={() => {
+          setStep("phone");
+          setError("");
+        }}
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors group"
+      >
+        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+        <span>تغییر شماره</span>
+        <span className="text-foreground/50 font-medium" dir="ltr">
+          ({phone})
+        </span>
+      </button>
+
+      <div className="space-y-1.5">
+        <h2 className="text-[17px] font-black text-foreground">
+          تکمیل اطلاعات
+        </h2>
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          کد تایید و مشخصات خود را وارد کنید.
+        </p>
+      </div>
+
+      <form onSubmit={verifyCode} className="space-y-3.5">
+        <AuthField
+          id="reg-code"
+          label="کد تایید ۶ رقمی"
+          icon={<KeyRound className="w-4 h-4" />}
+        >
+          <Input
+            id="reg-code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="• • • • • •"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            dir="ltr"
+            className={cn(
+              authInputClass,
+              "pr-11 text-center tracking-[0.5em] font-black font-mono text-base"
+            )}
+            autoFocus
+          />
+        </AuthField>
+
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+          <AuthField
+            id="reg-fn"
+            label="نام"
+            icon={<User className="w-4 h-4" />}
+          >
+            <Input
+              id="reg-fn"
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="علی"
+              className={cn(authInputClass, "pr-11")}
+            />
+          </AuthField>
+
+          <AuthField
+            id="reg-ln"
+            label="نام خانوادگی"
+            icon={<User className="w-4 h-4" />}
+          >
+            <Input
+              id="reg-ln"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="محمدی"
+              className={cn(authInputClass, "pr-11")}
+            />
+          </AuthField>
+        </div>
+
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+          <div>
+            <AuthField
+              id="reg-pass"
+              label="رمز عبور"
+              icon={<Lock className="w-4 h-4" />}
             >
-              کد تایید ۶ رقمی
-            </Label>
-            <div className="relative">
-              <KeyRound className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
-              <Input
-                id="register-code"
-                type="text"
-                maxLength={6}
-                placeholder="- - - - - -"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ""))}
-                className="pr-10 h-11 text-center tracking-[0.4em] font-black text-base rounded-xl bg-card border-border focus-visible:ring-primary/20 font-mono"
-                dir="ltr"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="firstName"
-                className="text-xs font-bold text-muted-foreground mr-1"
-              >
-                نام
-              </Label>
               <div className="relative">
-                <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
                 <Input
-                  id="firstName"
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="مثال: علی"
-                  className="pr-10 h-11 text-xs font-bold rounded-xl bg-card border-border focus-visible:ring-primary/20"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="lastName"
-                className="text-xs font-bold text-muted-foreground mr-1"
-              >
-                نام خانوادگی
-              </Label>
-              <div className="relative">
-                <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  id="lastName"
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="مثال: محمدی"
-                  className="pr-10 h-11 text-xs font-bold rounded-xl bg-card border-border focus-visible:ring-primary/20"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="register-password"
-                className="text-xs font-bold text-muted-foreground mr-1"
-              >
-                رمز عبور
-              </Label>
-              <div className="relative">
-                <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  id="register-password"
+                  id="reg-pass"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="******"
-                  className="pr-10 pl-10 h-11 text-left tracking-wider font-bold rounded-xl bg-card border-border focus-visible:ring-primary/20"
+                  placeholder="حداقل ۶ کاراکتر"
                   dir="ltr"
+                  className={cn(authInputClass, "pr-11 pl-11")}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground/70 transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -357,79 +322,46 @@ export function RegisterForm({ onSuccess, onLoginClick }: RegisterFormProps) {
                   )}
                 </button>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="register-confirm-password"
-                className="text-xs font-bold text-muted-foreground mr-1"
-              >
-                تکرار رمز عبور
-              </Label>
-              <div className="relative">
-                <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  id="register-confirm-password"
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="******"
-                  className="pr-10 h-11 text-left tracking-wider font-bold rounded-xl bg-card border-border focus-visible:ring-primary/20"
-                  dir="ltr"
-                />
-              </div>
-            </div>
+            </AuthField>
+            <PasswordStrength password={password} />
           </div>
 
-          {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-xs font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={
-              loading ||
-              code.length < 6 ||
-              !firstName ||
-              !lastName ||
-              password.length < 6 ||
-              password !== confirmPassword
-            }
-            className="w-full h-11 rounded-xl font-bold text-xs bg-primary hover:bg-primary/95 text-primary-foreground transition-all active:scale-[0.98] shadow-sm gap-2 mt-2"
+          <AuthField
+            id="reg-confirm"
+            label="تکرار رمز"
+            icon={<Lock className="w-4 h-4" />}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                در حال ثبت اطلاعات...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                تکمیل و ثبت‌نام نهایی
-              </>
-            )}
-          </Button>
+            <Input
+              id="reg-confirm"
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="تکرار رمز عبور"
+              dir="ltr"
+              className={cn(authInputClass, "pr-11")}
+            />
+          </AuthField>
+        </div>
 
-          <div className="text-center pt-1">
-            {countdown > 0 ? (
-              <span className="text-xs font-bold text-muted-foreground/80">
-                ارسال مجدد کد تایید تا {Math.floor(countdown / 60)}:
-                {String(countdown % 60).padStart(2, "0")} دیگر
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={resendCode}
-                className="text-xs font-black text-primary hover:underline underline-offset-4 transition-all"
-              >
-                ارسال مجدد کد تایید
-              </button>
-            )}
-          </div>
-        </form>
-      )}
+        <AnimatePresence>
+          {error && <AuthError message={error} />}
+        </AnimatePresence>
+
+        <AuthButton
+          loading={loading}
+          disabled={
+            code.length < 6 ||
+            !firstName.trim() ||
+            !lastName.trim() ||
+            password.length < 6 ||
+            password !== confirmPassword
+          }
+          label="تکمیل ثبت‌نام"
+          icon={<CheckCircle2 className="w-4 h-4" />}
+        />
+
+        <OtpCountdown countdown={countdown} onResend={resendCode} />
+      </form>
     </div>
   );
 }

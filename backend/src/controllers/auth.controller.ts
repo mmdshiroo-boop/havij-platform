@@ -635,3 +635,85 @@ export const logout = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, message: "خطای سرور" });
   }
 };
+
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { phone, code, newPassword } = req.body;
+
+    // اعتبارسنجی ورودی‌ها
+    if (!phone || !code || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "شماره موبایل، کد تایید و رمز عبور جدید الزامی هستند",
+      });
+    }
+
+    if (!phone.match(/^09[0-9]{9}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: "شماره موبایل معتبر نیست",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "رمز عبور جدید باید حداقل ۶ کاراکتر باشد",
+      });
+    }
+
+    // بررسی کد OTP
+    const otpRecord = await Otp.findOne({
+      phone,
+      code,
+      isUsed: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "کد تایید نامعتبر یا منقضی شده است",
+      });
+    }
+
+    // پیدا کردن کاربر
+    const user = await User.findOne({ phone }).select("+password");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "کاربری با این شماره موبایل یافت نشد",
+      });
+    }
+
+    // تغییر رمز عبور — مستقیم مقداردهی کنید چون pre-save hook هش می‌کند
+    user.password = newPassword;
+    await user.save();
+
+    // کد OTP را مصرف‌شده علامت بزنید
+    otpRecord.isUsed = true;
+    await otpRecord.save();
+
+    // ثبت audit log
+    await createAuditLog({
+      userId: user._id.toString(),
+      action: AuditAction.USER_CHANGE_PASSWORD,
+      resource: "User",
+      resourceId: user._id.toString(),
+      description: `کاربر ${user.firstName || user.phone} رمز عبور خود را از طریق فراموشی رمز تغییر داد.`,
+      req,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "رمز عبور با موفقیت تغییر کرد. اکنون می‌توانید وارد شوید.",
+    });
+  } catch (error) {
+    console.error("❌ Reset password error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "خطایی در سرور رخ داده است",
+    });
+  }
+};

@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
-
 import { useEffect, useState } from "react";
 import { adsApi, Ad } from "@/services/api/ads.api";
 import { categoryApi, Category } from "@/services/api/category.api";
@@ -60,6 +58,7 @@ export default function HomePage() {
           <HeroSection />
         </div>
 
+        {/* بنر بالایی از اینجا حذف شد و به داخل AdFeed منتقل شد */}
         <AdFeed
           isFiltered={false}
           filterLoading={false}

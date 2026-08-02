@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/app/context/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   FileText,
@@ -18,7 +19,6 @@ import {
   Building,
   Users,
   Shield,
-  Code2,
   Clock,
   MessageSquare,
   Gift,
@@ -29,7 +29,6 @@ import {
   XCircle,
   BarChart3,
   Bell,
-  Star,
   Ticket,
   Flag,
   Database,
@@ -54,62 +53,29 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-// ─── آرایه‌های منوها دقیقاً مطابق با PanelSidebar ───
 const userMenu = [
-  {
-    href: "/panel/user/dashboard",
-    label: "داشبورد عملکرد",
-    icon: LayoutDashboard,
-  },
+  { href: "/panel/user/dashboard", label: "داشبورد عملکرد", icon: LayoutDashboard },
   { href: "/panel/user/my-ads", label: "آگهی‌های من", icon: FileText },
   { href: "/panel/user/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
   { href: "/panel/user/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/user/tickets", label: "تیکت‌های من", icon: Ticket },
-  {
-    href: "/panel/user/my-consulting",
-    label: "مشاوره‌های من",
-    icon: MessageSquare,
-  },
-  {
-    href: "/panel/user/comments",
-    label: "نظرات آگهی‌های من",
-    icon: MessageSquare,
-  },
+  { href: "/panel/user/my-consulting", label: "مشاوره‌های من", icon: MessageSquare },
+  { href: "/panel/user/comments", label: "نظرات آگهی‌های من", icon: MessageSquare },
   { href: "/panel/user/reports-my", label: "گزارشات تخلف من", icon: Flag },
   { href: "/panel/user/profile", label: "پروفایل کاربری", icon: User },
   { href: "/panel/user/settings", label: "تنظیمات پنل", icon: Settings },
 ];
 
 const vipMenu = [
-  {
-    href: "/panel/vip/dashboard",
-    label: "داشبورد ویژه",
-    icon: LayoutDashboard,
-  },
+  { href: "/panel/vip/dashboard", label: "داشبورد ویژه", icon: LayoutDashboard },
   { href: "/panel/vip/my-ads", label: "آگهی‌های من", icon: Crown },
   { href: "/panel/vip/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/vip/analytics", label: "آمار و تحلیل", icon: TrendingUp },
-  {
-    href: "/panel/vip/agents",
-    label: "مدیریت کارشناسان آژانس",
-    icon: HomeIcon,
-  },
-  {
-    href: "/panel/vip/market-analysis",
-    label: "تحلیل صنف و بازار",
-    icon: BarChart3,
-  },
+  { href: "/panel/vip/agents", label: "مدیریت کارشناسان آژانس", icon: HomeIcon },
+  { href: "/panel/vip/market-analysis", label: "تحلیل صنف و بازار", icon: BarChart3 },
   { href: "/panel/vip/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
-  {
-    href: "/panel/vip/comments",
-    label: "نظرات آگهی‌های من",
-    icon: MessageSquare,
-  },
-  {
-    href: "/panel/vip/my-consulting",
-    label: "مشاوره های  من",
-    icon: MessageSquare,
-  },
+  { href: "/panel/vip/comments", label: "نظرات آگهی‌های من", icon: MessageSquare },
+  { href: "/panel/vip/my-consulting", label: "مشاوره های  من", icon: MessageSquare },
   { href: "/panel/vip/reports-my", label: "گزارشات", icon: FileText },
   { href: "/panel/vip/support", label: "تیکت پشتیبانی", icon: MessageSquare },
   { href: "/panel/vip/settings", label: "تنظیمات", icon: Settings },
@@ -117,37 +83,17 @@ const vipMenu = [
 ];
 
 const agentMenu = [
-  {
-    href: "/panel/agent/dashboard",
-    label: "داشبورد آژانس",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/panel/agent/consulting",
-    label: "مشاوره‌های من",
-    icon: MessageSquare,
-  },
-  {
-    href: "/panel/agent/advanced-search",
-    label: "جستجوی پیشرفته",
-    icon: Search,
-  },
+  { href: "/panel/agent/dashboard", label: "داشبورد آژانس", icon: LayoutDashboard },
+  { href: "/panel/agent/consulting", label: "مشاوره‌های من", icon: MessageSquare },
+  { href: "/panel/agent/advanced-search", label: "جستجوی پیشرفته", icon: Search },
   { href: "/panel/agent/my-ads", label: "آگهی‌های من", icon: FileText },
   { href: "/panel/agent/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
-  {
-    href: "/panel/agent/comments",
-    label: "نظرات آگهی‌های من",
-    icon: MessageSquare,
-  },
+  { href: "/panel/agent/comments", label: "نظرات آگهی‌های من", icon: MessageSquare },
   { href: "/panel/agent/tickets", label: "تیکت‌های پشتیبانی", icon: Ticket },
   { href: "/panel/agent/properties", label: "فهرست املاک", icon: Building },
   { href: "/panel/agent/agents", label: "مدیریت مشاوران", icon: Users },
   { href: "/panel/agent/reports", label: "گزارشات آژانس", icon: FileText },
-  {
-    href: "/panel/agent/market-analysis",
-    label: "تحلیل بازار",
-    icon: TrendingUp,
-  },
+  { href: "/panel/agent/market-analysis", label: "تحلیل بازار", icon: TrendingUp },
   { href: "/panel/agent/chat", label: "گفتگوی داخلی", icon: MessageSquare },
   { href: "/panel/agent/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/agent/reports-my", label: "گزارشات تخلف من", icon: Flag },
@@ -156,18 +102,10 @@ const agentMenu = [
 ];
 
 const developerMenu = [
-  {
-    href: "/panel/developer/dashboard",
-    label: "داشبورد",
-    icon: LayoutDashboard,
-  },
+  { href: "/panel/developer/dashboard", label: "داشبورد", icon: LayoutDashboard },
   { href: "/panel/developer/api-key", label: "API Keys", icon: Key },
   { href: "/panel/developer/webhooks", label: "Webhooks", icon: Webhook },
-  {
-    href: "/panel/developer/logs",
-    label: "لاگ‌ها و آنالیتیکس",
-    icon: BarChart3,
-  },
+  { href: "/panel/developer/logs", label: "لاگ‌ها و آنالیتیکس", icon: BarChart3 },
   { href: "/panel/developer/docs", label: "مستندات", icon: BookOpen },
   { href: "/panel/developer/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/developer/reports-my", label: "گزارشات تخلف من", icon: Flag },
@@ -176,11 +114,7 @@ const developerMenu = [
 ];
 
 const expertMenu = [
-  {
-    href: "/panel/expert/dashboard",
-    label: "داشبورد کارشناسی",
-    icon: LayoutDashboard,
-  },
+  { href: "/panel/expert/dashboard", label: "داشبورد کارشناسی", icon: LayoutDashboard },
   { href: "/panel/expert/bulk-upload", label: "بارگذاری آگهی", icon: Download },
   { href: "/panel/expert/pending", label: "در انتظار بررسی", icon: Clock },
   { href: "/panel/expert/approved", label: "تایید شده‌ها", icon: CheckCircle },
@@ -198,11 +132,7 @@ const expertMenu = [
 ];
 
 const adminMenu = [
-  {
-    href: "/panel/admin/dashboard",
-    label: "داشبورد مدیریت",
-    icon: LayoutDashboard,
-  },
+  { href: "/panel/admin/dashboard", label: "داشبورد مدیریت", icon: LayoutDashboard },
   { href: "/panel/admin/users", label: "مدیریت کاربران", icon: Users },
   { href: "/panel/admin/ads", label: "مدیریت آگهی‌ها", icon: FileText },
   { href: "/panel/admin/tickets", label: "مدیریت تیکت‌ها", icon: Ticket },
@@ -214,107 +144,48 @@ const adminMenu = [
 ];
 
 export const superAdminMenu = [
-  {
-    href: "/panel/super-admin/dashboard",
-    label: "داشبورد مدیر ارشد",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/panel/super-admin/blacklist-keywords",
-    label: "کلمات سیاه‌لیست",
-    icon: ShieldAlert,
-  },
-  {
-    href: "/panel/super-admin/cookie-audits",
-    label: "رصد کوکی و نشست‌های کاربران",
-    icon: Cookie,
-  },
-  {
-    href: "/panel/super-admin/ads",
-    label: "مدیریت کل آگهی‌ها",
-    icon: FileText,
-  },
+  { href: "/panel/super-admin/dashboard", label: "داشبورد مدیر ارشد", icon: LayoutDashboard },
+  { href: "/panel/super-admin/blacklist-keywords", label: "کلمات سیاه‌لیست", icon: ShieldAlert },
+  { href: "/panel/super-admin/cookie-audits", label: "رصد کوکی و نشست‌های کاربران", icon: Cookie },
+  { href: "/panel/super-admin/ads", label: "مدیریت کل آگهی‌ها", icon: FileText },
   { href: "/panel/super-admin/users", label: "مدیریت کاربران", icon: Users },
   { href: "/panel/super-admin/admins", label: "مدیریت ادمین‌ها", icon: Shield },
-  {
-    href: "/panel/super-admin/chat-monitor",
-    label: "رصد چت و پیام‌ها",
-    icon: MessageCircle,
-  },
-  {
-    href: "/panel/super-admin/roles",
-    label: "نقش‌ها و مجوزها",
-    icon: SlidersHorizontal,
-  },
+  { href: "/panel/super-admin/chat-monitor", label: "رصد چت و پیام‌ها", icon: MessageCircle },
+  { href: "/panel/super-admin/roles", label: "نقش‌ها و مجوزها", icon: SlidersHorizontal },
   { href: "/panel/super-admin/tickets", label: "مدیریت تیکت‌ها", icon: Ticket },
-  {
-    href: "/panel/super-admin/comments",
-    label: "مدیریت کامنت‌ها",
-    icon: MessageSquare,
-  },
-  {
-    href: "/panel/super-admin/financial",
-    label: "گزارش‌های مالی",
-    icon: CreditCard,
-  },
-  {
-    href: "/panel/super-admin/subscriptions",
-    label: "پلن‌های اشتراک و VIP",
-    icon: Gift,
-  },
+  { href: "/panel/super-admin/comments", label: "مدیریت کامنت‌ها", icon: MessageSquare },
+  { href: "/panel/super-admin/financial", label: "گزارش‌های مالی", icon: CreditCard },
+  { href: "/panel/super-admin/subscriptions", label: "پلن‌های اشتراک و VIP", icon: Gift },
   { href: "/panel/super-admin/banners", label: "مدیریت بنرها", icon: Globe },
-  {
-    href: "/panel/super-admin/market-analysis",
-    label: "تحلیل بازار",
-    icon: TrendingUp,
-  },
+  { href: "/panel/super-admin/market-analysis", label: "تحلیل بازار", icon: TrendingUp },
   { href: "/panel/super-admin/api-keys", label: "کلیدهای API", icon: Key },
   { href: "/panel/super-admin/webhooks", label: "وب‌هوک‌ها", icon: Webhook },
-  {
-    href: "/panel/super-admin/settings",
-    label: "تنظیمات سایت",
-    icon: Settings,
-  },
+  { href: "/panel/super-admin/settings", label: "تنظیمات سایت", icon: Settings },
   { href: "/panel/super-admin/backup", label: "پشتیبان‌گیری", icon: Database },
-  {
-    href: "/panel/super-admin/audit-logs",
-    label: "لاگ رویدادها",
-    icon: ScrollText,
-  },
+  { href: "/panel/super-admin/audit-logs", label: "لاگ رویدادها", icon: ScrollText },
   { href: "/panel/super-admin/traffic", label: "ترافیک سایت", icon: Activity },
-  {
-    href: "/panel/super-admin/notifications",
-    label: "اعلان‌های سیستمی",
-    icon: Bell,
-  },
-  {
-    href: "/panel/super-admin/profile",
-    label: "پروفایل مدیر ارشد",
-    icon: User,
-  },
+  { href: "/panel/super-admin/notifications", label: "اعلان‌های سیستمی", icon: Bell },
+  { href: "/panel/super-admin/profile", label: "پروفایل مدیر ارشد", icon: User },
 ];
 
 export default function ProfilePage() {
   const pathname = usePathname();
-  const router = useRouter();
 
-  const { user: authUser } = useAuth();
+  // ✅ logout را هم از context می‌گیریم
+  const { user: authUser, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
   const [menuItems, setMenuItems] = useState(userMenu);
   const [userRole, setUserRole] = useState<string>("user");
-
-  // استیت تم برای دارک مود
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // بررسی وضعیت دارک مود هنگام لود کامپوننت
   useEffect(() => {
     if (document.documentElement.classList.contains("dark")) {
       setIsDarkMode(true);
     }
   }, []);
 
-  // هندل تغییر تم
   const toggleTheme = () => {
     if (isDarkMode) {
       document.documentElement.classList.remove("dark");
@@ -325,11 +196,13 @@ export default function ProfilePage() {
     }
   };
 
-  // تنظیم منوها بر اساس نقش کاربر
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser) {
+      setMenuItems(userMenu);
+      setUserRole("user");
+      return;
+    }
 
-    // تبدیل آندرلاین به خط تیره جهت یکپارچه‌سازی روت‌ها (مانند تبدیل super_admin به super-admin)
     const role = (authUser.role || "user").replace("_", "-");
     setUserRole(role);
 
@@ -357,11 +230,17 @@ export default function ProfilePage() {
     }
   }, [authUser]);
 
-  // توابع کمکی کاربر
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/");
+  // ✅ خروج درست
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await logout();
+      toast.success("با موفقیت از حساب خارج شدید");
+    } catch (error) {
+      toast.error("خروج از حساب با خطا مواجه شد");
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   const getAvatarUrl = () => {
@@ -371,18 +250,19 @@ export default function ProfilePage() {
   };
 
   const getInitials = () => {
-    if (authUser?.firstName && authUser?.lastName)
+    if (authUser?.firstName && authUser?.lastName) {
       return `${authUser.firstName[0]}${authUser.lastName[0]}`;
+    }
     if (authUser?.firstName) return authUser.firstName[0];
     return authUser?.phone?.slice(-2) || "U";
   };
 
-  // تفکیک منوهای اصلی و تنظمیات
   const mainNavigation = menuItems.filter(
-    (item) => !item.href.includes("profile") && !item.href.includes("settings"),
+    (item) => !item.href.includes("profile") && !item.href.includes("settings")
   );
+
   const accountNavigation = menuItems.filter(
-    (item) => item.href.includes("profile") || item.href.includes("settings"),
+    (item) => item.href.includes("profile") || item.href.includes("settings")
   );
 
   return (
@@ -391,51 +271,55 @@ export default function ProfilePage() {
       dir="rtl"
     >
       {/* کارت هدر پروفایل */}
-      <div className="flex items-center justify-between py-5 px-4 bg-card rounded-2xl shadow-card border border-border mb-6">
+      <div className="mb-6 flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-5 shadow-card">
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16 ring-2 ring-primary/20 rounded-full">
+          <Avatar className="h-16 w-16 rounded-full ring-2 ring-primary/20">
             <AvatarImage
               src={authUser?.avatar ? getAvatarUrl() : "/images/user.webp"}
               className="object-cover"
             />
-            <AvatarFallback className="bg-muted text-foreground font-black text-xl">
+            <AvatarFallback className="bg-muted text-xl font-black text-foreground">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
+
           <div className="space-y-1">
-            <h2 className="font-bold text-lg text-foreground">
+            <h2 className="text-lg font-bold text-foreground">
               {authUser?.firstName
                 ? `${authUser.firstName} ${authUser.lastName || ""}`
                 : "کاربر میهمان"}
             </h2>
+
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground font-medium">
+              <span className="text-sm font-medium text-muted-foreground">
                 {authUser?.phone || "شماره ثبت نشده"}
               </span>
-              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold">
+              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                 {userRole.toLowerCase()}
               </span>
             </div>
           </div>
         </div>
+
         <Link
           href={`/panel/${userRole}/profile`}
-          className="p-2.5 hover:bg-accent rounded-full transition text-muted-foreground bg-muted/50"
+          className="rounded-full bg-muted/50 p-2.5 text-muted-foreground transition hover:bg-accent"
         >
-          <Edit className="w-5 h-5" />
+          <Edit className="h-5 w-5" />
         </Link>
       </div>
 
-      {/* بخش دسترسی‌های اصلی */}
+      {/* دسترسی‌های اصلی */}
       {mainNavigation.length > 0 && (
         <div className="mb-6">
-          <p className="text-xs font-bold text-muted-foreground pr-2 mb-3 tracking-wider">
+          <p className="mb-3 pr-2 text-xs font-bold tracking-wider text-muted-foreground">
             دسترسی‌های اصلی
           </p>
-          <div className="space-y-1 bg-card rounded-2xl shadow-card border border-border p-2">
+
+          <div className="space-y-1 rounded-2xl border border-border bg-card p-2 shadow-card">
             {mainNavigation.map((item, index) => {
               const isActive = pathname === item.href;
-              // چک کردن اینکه آیا این آیتم مربوط به نوتیفیکیشن است و عدد نخوانده دارد یا خیر
+
               const badgeCount =
                 item.href.includes("notifications") && unreadCount > 0
                   ? unreadCount
@@ -456,12 +340,13 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* بخش تنظیمات و حساب کاربری */}
+      {/* تنظیمات و حساب */}
       <div>
-        <p className="text-xs font-bold text-muted-foreground pr-2 mb-3 tracking-wider">
+        <p className="mb-3 pr-2 text-xs font-bold tracking-wider text-muted-foreground">
           تنظیمات و حساب
         </p>
-        <div className="space-y-1 bg-card rounded-2xl shadow-card border border-border p-2">
+
+        <div className="space-y-1 rounded-2xl border border-border bg-card p-2 shadow-card">
           {accountNavigation.map((item, index) => {
             const isActive = pathname === item.href;
             return (
@@ -477,39 +362,49 @@ export default function ProfilePage() {
 
           <hr className="my-2 border-border" />
 
-          {/* سوییچ حالت شب */}
+          {/* حالت شب */}
           <div
             onClick={toggleTheme}
-            className="flex items-center justify-between px-4 py-3.5 hover:bg-accent rounded-xl cursor-pointer transition-colors"
+            className="flex cursor-pointer items-center justify-between rounded-xl px-4 py-3.5 transition-colors hover:bg-accent"
           >
             <div className="flex items-center gap-4">
               {isDarkMode ? (
-                <Moon className="w-5 h-5 text-primary" />
+                <Moon className="h-5 w-5 text-primary" />
               ) : (
-                <Sun className="w-5 h-5 text-muted-foreground" />
+                <Sun className="h-5 w-5 text-muted-foreground" />
               )}
               <span className="text-sm font-medium text-foreground">
                 حالت شب
               </span>
             </div>
+
             <button
-              className={`w-11 h-6 rounded-full transition-colors relative ${isDarkMode ? "bg-primary" : "bg-muted"}`}
+              type="button"
+              className={cn(
+                "relative h-6 w-11 rounded-full transition-colors",
+                isDarkMode ? "bg-primary" : "bg-muted"
+              )}
             >
               <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${isDarkMode ? "left-1" : "left-6"}`}
+                className={cn(
+                  "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all",
+                  isDarkMode ? "left-1" : "left-6"
+                )}
               />
             </button>
           </div>
 
-          {/* دکمه خروج واقعی با منطق handleLogout */}
+          {/* خروج */}
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-destructive/10 rounded-xl cursor-pointer transition-colors group"
+            disabled={logoutLoading}
+            className="group flex w-full items-center justify-between rounded-xl px-4 py-3.5 transition-colors hover:bg-destructive/10 disabled:opacity-60"
           >
             <div className="flex items-center gap-4">
-              <LogOut className="w-5 h-5 text-destructive group-hover:scale-110 transition-transform" />
+              <LogOut className="h-5 w-5 text-destructive transition-transform group-hover:scale-110" />
               <span className="text-sm font-bold text-destructive">
-                خروج از حساب کاربری
+                {logoutLoading ? "در حال خروج..." : "خروج از حساب کاربری"}
               </span>
             </div>
           </button>
@@ -519,7 +414,6 @@ export default function ProfilePage() {
   );
 }
 
-// کامپوننت کمکی MenuItem همراه با روتینگ واقعی (Link)
 interface MenuItemProps {
   href: string;
   label: string;
@@ -538,38 +432,37 @@ const MenuItem = ({
   <Link href={href} className="block w-full">
     <div
       className={cn(
-        "flex items-center justify-between px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-200",
-        isActive ? "bg-primary/10" : "hover:bg-accent",
+        "flex cursor-pointer items-center justify-between rounded-xl px-4 py-3.5 transition-all duration-200",
+        isActive ? "bg-primary/10" : "hover:bg-accent"
       )}
     >
       <div className="flex items-center gap-4">
         <Icon
           className={cn(
-            "w-5 h-5 transition-transform",
-            isActive ? "text-primary scale-110" : "text-muted-foreground",
+            "h-5 w-5 transition-transform",
+            isActive ? "scale-110 text-primary" : "text-muted-foreground"
           )}
         />
         <span
           className={cn(
             "text-sm",
-            isActive
-              ? "font-black text-primary"
-              : "font-medium text-foreground",
+            isActive ? "font-black text-primary" : "font-medium text-foreground"
           )}
         >
           {label}
         </span>
 
-        {badgeCount && (
-          <span className="flex items-center justify-center bg-destructive text-destructive-foreground h-5 min-w-[20px] rounded-full text-[10px] font-bold px-1.5 ml-auto">
+        {badgeCount ? (
+          <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
             {badgeCount}
           </span>
-        )}
+        ) : null}
       </div>
+
       <ChevronLeft
         className={cn(
-          "w-4 h-4",
-          isActive ? "text-primary" : "text-muted-foreground",
+          "h-4 w-4",
+          isActive ? "text-primary" : "text-muted-foreground"
         )}
       />
     </div>

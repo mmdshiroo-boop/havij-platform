@@ -255,20 +255,14 @@ export default function SpecialAdsPage() {
     return toFa(price.toLocaleString("fa-IR")) + " تومان";
   };
 
-const getImageUrl = (path?: string): string | undefined => {
-  if (!path) return undefined;
-  if (path.startsWith("http") && !path.includes("localhost:5001")) return path;
-  const backendBase = (
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001"
-  );
-  if (path.startsWith("http://localhost:5001")) {
-    return path.replace("http://localhost:5001", backendBase);
-  }
-  if (path.startsWith("/uploads")) {
-    return backendBase + path;
-  }
-  return path;
-};
+  const getImageUrl = (path?: string): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith("http")) return path;
+    const base =
+      process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+      "http://localhost:5001";
+    return `${base}${path}`;
+  };
 
   const statsData = useMemo(() => {
     const total = ads.length;

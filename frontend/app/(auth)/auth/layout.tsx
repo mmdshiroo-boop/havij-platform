@@ -1,6 +1,6 @@
-import { Suspense } from "react"; // ✅ اضافه شد
+import { Suspense } from "react";
 import { Header } from "@/components/common/header";
-import { Toaster } from "sonner";
+import { BottomNav } from "@/components/mobile/bottom-nav";
 
 export default function AuthLayout({
   children,
@@ -8,14 +8,22 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="">
-      {/* ✅ Header را داخل Suspense قرار دهید */}
-      <Suspense fallback={null}>
-        <Header />
-      </Suspense>
-      <div className="min-h-[calc(100vh-160px)] flex items-center justify-center">
+    <div className="min-h-screen bg-background overflow-x-hidden flex flex-col">
+      {/* Header فقط دسکتاپ */}
+      <div className="hidden md:block border-b border-border/40">
+        <Suspense fallback={null}>
+          <Header />
+        </Suspense>
+      </div>
+
+      {/* محتوای فرم */}
+      <main className="flex-1 flex items-start sm:items-center justify-center px-4 py-8 sm:py-10 md:py-14 pb-24 md:pb-14">
         {children}
-        <Toaster position="top-center" richColors />
+      </main>
+
+      {/* BottomNav فقط موبایل */}
+      <div className="md:hidden">
+        <BottomNav />
       </div>
     </div>
   );

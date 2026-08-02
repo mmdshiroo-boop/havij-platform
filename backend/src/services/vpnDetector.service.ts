@@ -14,8 +14,11 @@ interface IPInfo {
 
 class VPNDetectorService {
   private cache: Map<string, { data: IPInfo; timestamp: number }> = new Map();
-  private CACHE_DURATION = 1000 * 60 * 60;
+  private CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
+  /**
+   * تشخیص اطلاعات IP با کش
+   */
   async getIPInfo(ip: string): Promise<IPInfo | null> {
     const cached = this.cache.get(ip);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
@@ -23,7 +26,7 @@ class VPNDetectorService {
     }
     try {
       const { data } = await axios.get(`https://ipapi.co/${ip}/json/`, {
-        timeout: 3000,
+        timeout: 3000, // ۳ ثانیه تایم‌اوت برای درخواست به API خارجی
       });
       const info: IPInfo = {
         ip: data.ip,
@@ -39,27 +42,47 @@ class VPNDetectorService {
       return info;
     } catch (error) {
       console.warn(`⚠️ VPN detection failed for IP ${ip}:`, error.message);
-      return null;
+      return null; // در صورت خطا، شناسایی انجام نشه و درخواست ادامه پیدا کنه
     }
   }
 
+  /**
+   * تشخیص IP کاربر از request
+   */
   getClientIP(req: Request): string {
-    // ✅ استخراج IP واقعی از هدر x-forwarded-for
-    const forwarded = (req.headers["x-forwarded-for"] as string) || "";
-    return forwarded.split(",")[0]?.trim() || req.socket.remoteAddress?.replace("::ffff:", "") || "unknown";
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = forwarded
+      ? typeof forwarded === "string"
+        ? forwarded.split(",")[0]
+        : forwarded[0]
+      : req.socket.remoteAddress;
+
+    return ip?.replace("::ffff:", "") || "unknown";
   }
 
+  /**
+   * بررسی اینکه IP متعلق به VPN/Proxy است
+   */
   async isVPN(ip: string): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info ? info.proxy || info.hosting : false;
   }
 
+  /**
+   * بررسی اینکه IP از ایران است
+   */
   async isIranIP(ip: string): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info?.countryCode === "IR";
   }
 
-  async isAllowedCountry(ip: string, allowedCountries: string[]): Promise<boolean> {
+  /**
+   * بررسی اینکه IP از کشورهای خاص است
+   */
+  async isAllowedCountry(
+    ip: string,
+    allowedCountries: string[],
+  ): Promise<boolean> {
     const info = await this.getIPInfo(ip);
     return info ? allowedCountries.includes(info.countryCode) : false;
   }
