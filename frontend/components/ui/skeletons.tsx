@@ -1,37 +1,44 @@
 // components/ui/skeletons.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 
-// ✅ اسپینر تمام صفحه با لوگو و متن
 export const FullPageSpinner = () => {
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50">      <div className="text-center space-y-6">
-        {/* لوگو */}
-        <div className="relative mx-auto">
-          <div className="flex justify-center">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary/20 rounded-full" />
-            <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50">
+      <div className="flex flex-col items-center gap-10">
+        {/* لوگوی بزرگ در بالا */}
+        <img
+          src="/log.png"
+          alt="پلتفرم آگهی هویج"
+          className="h-28 md:h-36 w-auto object-contain"
+        />
+
+        <div className="flex flex-col items-center gap-6">
+          {/* اسپینر + سه‌نقطه */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 border-4 border-primary/20 rounded-full" />
+              <div className="absolute top-0 left-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+            {/* سه نقطه با انیمیشن bounce */}
+        
+          </div>
+
+          {/* عنوان */}
+          <div className="text-center">
+            <h1 className="text-2xl md:text-3xl font-black text-primary">
+              پلتفرم آگهی هویج
+            </h1>
+            <p className="text-sm text-primary mt-2 animate-pulse">
+              در حال بارگذاری...
+            </p>
           </div>
         </div>
-        <h1 className="text-2xl py-3 font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          پلتفرم آگهی پلاک
-        </h1>
-
-        <p className="text-sm text-muted-foreground animate-pulse">
-          در حال بارگذاری...
-        </p>
-        </div>
-
-        {/* عنوان */}
-
-        {/* اسپینر */}
-        
       </div>
     </div>
   );
 };
 
-// بقیه اسکلتون‌ها به همان صورت باقی می‌مانند...
+// بقیه اسکلتون‌ها بدون تغییر...
 export const HomePageSkeleton = () => {
   return (
     <div className="w-full max-w-[1400px] mx-auto px-4 py-4 md:py-6">

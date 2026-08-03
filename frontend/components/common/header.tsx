@@ -55,11 +55,17 @@ import {
   Briefcase,
   Factory,
   Package,
-  MapPin,
-  Search,
+  LayoutGrid,
+  PenTool,
+  Info,
+  PhoneCall,
+  CreditCard,
+  Headset,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, getFullImageUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   categoryApi,
   Category as CategoryType,
@@ -68,10 +74,29 @@ import { City, locationApi, Province } from "@/services/api/location.api";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { SearchBox } from "../search/SearchBox";
 import { NotificationBell } from "../notifcation/NotificationBell";
-import { User } from "@/types";
 import { Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
+// ═══════════════ لینک‌های اصلی (فارسی) ═══════════════
+const mainLinks = [
+  { href: "/category", label: "دسته‌بندی‌ها", icon: LayoutGrid },
+  { href: "/create-ad", label: "ثبت آگهی", icon: PlusCircle },
+  { href: "/consulting", label: "مشاوره", icon: Headset },
+  { href: "/chat", label: "گفتگو", icon: MessageCircle },
+  { href: "/help", label: "راهنما", icon: HelpCircle },
+  { href: "/about", label: "درباره ما", icon: Info },
+  { href: "/contact", label: "تماس با ما", icon: PhoneCall },
+  { href: "/pricing", label: "تعرفه‌ها", icon: CreditCard },
+  { href: "/rules", label: "قوانین", icon: BookOpen },
+  { href: "/privacy", label: "حریم خصوصی", icon: Shield },
+  { href: "/support", label: "پشتیبانی", icon: Headset },
+  { href: "/report", label: "گزارش تخلف", icon: AlertTriangle },
+];
+
+// ═══════════════ منوهای کاربری (برای UserMenu) ═══════════════
 interface MenuItem {
   icon: LucideIcon;
   label: string;
@@ -84,7 +109,6 @@ interface UserMenuProps {
   customMenuItems?: MenuItem[];
 }
 
-// ─── منوهای کاربری (بدون تغییر) ───
 const defaultMenuItems: MenuItem[] = [
   { icon: UserIcon, label: "پروفایل کاربری", href: "/panel/user/profile" },
   { icon: FileText, label: "آگهی‌های من", href: "/panel/user/my-ads" },
@@ -254,7 +278,7 @@ const superAdminMenuItems: MenuItem[] = [
   },
 ];
 
-// ─── UserMenu (بدون تغییر) ───
+// ═══════════════ UserMenu (کامل - بدون تغییر) ═══════════════
 export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -421,7 +445,6 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
         align="center"
         sideOffset={10}
       >
-        {/* هدر دراپ‌داون */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/20 backdrop-blur-sm mb-2">
           <Avatar className="w-14 h-14 ring-2 ring-primary/20 shadow-lg rounded-full shrink-0">
             <AvatarImage
@@ -498,7 +521,7 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   );
 }
 
-// ─── منوی اصلی برای موبایل/تبلت (جدید) ───
+// ═══════════════ MainNavMenu (منوی قدیمی برای موبایل - نگه داشته شده ولی استفاده نمی‌شود) ═══════════════
 function MainNavMenu() {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -567,7 +590,6 @@ function MainNavMenu() {
         align="start"
         sideOffset={10}
       >
-        {/* پروفایل */}
         {user ? (
           <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl mb-3">
             <Avatar className="w-10 h-10 ring-2 ring-primary/20 rounded-full">
@@ -598,7 +620,6 @@ function MainNavMenu() {
           </Button>
         )}
 
-        {/* موقعیت مکانی */}
         <DropdownMenuLabel className="text-xs font-extrabold text-muted-foreground mt-2">موقعیت مکانی</DropdownMenuLabel>
         <div className="grid grid-cols-2 gap-2 mb-3">
           <select
@@ -627,7 +648,6 @@ function MainNavMenu() {
           </select>
         </div>
 
-        {/* دسته‌بندی‌ها */}
         <DropdownMenuLabel className="text-xs font-extrabold text-muted-foreground">دسته‌بندی‌ها</DropdownMenuLabel>
         {loadingCategories ? (
           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -652,7 +672,6 @@ function MainNavMenu() {
           </div>
         )}
 
-        {/* اکشن‌ها */}
         <div className="space-y-2 pt-2 border-t border-border/40">
           <Button
             className="w-full gap-2 h-10 rounded-xl font-bold bg-gradient-to-r from-primary to-primary/90 text-white"
@@ -704,7 +723,176 @@ export const getCategoryIcon = (iconName?: string) => {
   return map[iconName ?? ""] ?? <Package {...p} />;
 };
 
-// ─── هدر اصلی ───
+// ═══════════════ MainLinksSheet (با پورتال و z-index بالا) ═══════════════
+export function MainLinksSheet() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    toast.success("شما خارج شدید");
+    router.push("/");
+    setOpen(false);
+  };
+
+  const sheetContent = (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+
+          {/* Sheet */}
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-y-0 right-0 z-[110] h-full w-[290px] sm:w-[320px] bg-card text-foreground shadow-2xl border-l border-border flex flex-col"
+          >
+            {/* هدر */}
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <Link href="/" onClick={() => setOpen(false)}>
+                <img
+                  src="/log.png"
+                  alt="لوگو"
+                  className="h-10 sm:h-12 w-auto object-contain"
+                />
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-muted/60"
+                onClick={() => setOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* پروفایل */}
+            {user ? (
+              <div className="flex items-center gap-3 p-4 bg-muted/30 border-b border-border">
+                <Avatar className="w-10 h-10 ring-2 ring-primary/30 rounded-full">
+                  <AvatarImage
+                    src={
+                      user.avatar
+                        ? user.avatar.startsWith("http")
+                          ? user.avatar
+                          : `${API_BASE.replace("/api", "")}${user.avatar}`
+                        : "/images/user.webp"
+                    }
+                  />
+                  <AvatarFallback>
+                    <img src="/images/user.webp" className="w-full h-full object-cover rounded-full" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-right">
+                  <p className="text-sm font-bold truncate">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">{user.phone}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 border-b border-border">
+                <Button
+                  className="w-full rounded-xl"
+                  onClick={() => { router.push("/auth"); setOpen(false); }}
+                >
+                  <UserIcon className="w-4 h-4 ml-2" />
+                  ورود / ثبت‌نام
+                </Button>
+              </div>
+            )}
+
+            {/* لینک‌ها */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <p className="text-[10px] font-black text-muted-foreground/70 px-3 py-1.5 uppercase tracking-wider">
+                صفحات اصلی
+              </p>
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
+              >
+                {mainLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <motion.div
+                      key={link.href}
+                      variants={{
+                        hidden: { opacity: 0, x: 20 },
+                        visible: { opacity: 1, x: 0 },
+                      }}
+                    >
+                      <Link
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold
+                                   text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          <span>{link.label}</span>
+                        </div>
+                        <ChevronLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-x-1" />
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </div>
+
+            {/* فوتر */}
+            {user && (
+              <div className="p-3 border-t border-border bg-muted/20">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-destructive hover:bg-destructive/10"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-4 h-4 ml-2" />
+                  خروج از حساب
+                </Button>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 rounded-xl text-foreground hover:bg-muted/60 active:scale-95 transition-transform"
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+
+      {/* پورتال: رندر مستقیم در body برای جلوگیری از تداخل z-index */}
+      {mounted && createPortal(sheetContent, document.body)}
+    </>
+  );
+}
+
+// ═══════════════ هدر اصلی (با فاصله‌گذاری بهینه) ═══════════════
 export function Header() {
   const router = useRouter();
   const { user } = useAuth();
@@ -729,21 +917,21 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-300 border-b bg-card flex items-center",
+        "sticky top-0 z-50 w-full transition-all duration-300 border-b bg-card/90 backdrop-blur-md flex items-center",
         isScrolled
           ? "h-16 bg-background/95 backdrop-blur-md shadow-sm border-border/60"
           : "h-20 bg-background/80 backdrop-blur-sm border-border/40",
       )}
       dir="rtl"
     >
-      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between gap-4 md:gap-6">
-        {/* === دسکتاپ === */}
-        <div className="hidden lg:flex items-center justify-between w-full gap-6">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between gap-4 md:gap-8">
+        {/* ═══════════ دسکتاپ (چیدمان بهبودیافته) ═══════════ */}
+        <div className="hidden lg:flex items-center justify-between w-full gap-8">
           <Logo />
-        <div className="flex-1 max-w-xl mx-auto w-full">
-        <Suspense fallback={null}>
-         <SearchBox className="w-full" />
-          </Suspense>
+          <div className="flex-1 max-w-xl mx-auto w-full">
+            <Suspense fallback={null}>
+              <SearchBox className="w-full" />
+            </Suspense>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/chat")}>
@@ -764,17 +952,17 @@ export function Header() {
           </div>
         </div>
 
-        {/* === موبایل/تبلت === */}
+        {/* ═══════════ موبایل/تبلت (منوی شیشه‌ای جدید) ═══════════ */}
         <div className="flex lg:hidden items-center justify-between w-full gap-3">
           <div className="flex items-center gap-2">
-            <MainNavMenu />
+            <MainLinksSheet />
             <Logo small />
           </div>
-       <div className="flex-1 max-w-xs mx-1">
-  <Suspense fallback={null}>
-    <SearchBox className="w-full" />
-  </Suspense>
-</div>
+          <div className="flex-1 max-w-xs mx-1">
+            <Suspense fallback={null}>
+              <SearchBox className="w-full" />
+            </Suspense>
+          </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <NotificationBell />
             <ThemeToggle />

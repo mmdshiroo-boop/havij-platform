@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   adBannerApi,
   AdBanner as AdBannerType,
 } from "@/services/api/adBanner.api";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 
 interface AdBannerProps {
   position:
@@ -24,9 +26,11 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
   const [banners, setBanners] = useState<AdBannerType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
+    setImgError(false);
     adBannerApi
       .getByPosition(position)
       .then((data) => {
@@ -46,6 +50,7 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
       setCurrentIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % banners.length;
         adBannerApi.trackView(banners[nextIndex]._id).catch(console.error);
+        setImgError(false); // ریست خطا برای بنر جدید
         return nextIndex;
       });
     }, 6000);
@@ -64,24 +69,29 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
   }
 
   const currentBanner = banners[currentIndex];
-  const imageUrl =
+  const rawImageUrl =
     isMobile && currentBanner.mobileImageUrl
       ? currentBanner.mobileImageUrl
       : currentBanner.imageUrl;
 
+  const imageUrl = getImageUrl(rawImageUrl); // ✅ تبدیل مسیر با helper
+
   const renderBannerContent = () => (
     <div className="relative w-full overflow-hidden rounded-xl bg-neutral-50 border border-neutral-100/80 group transition-all duration-300 shadow-sm hover:shadow-md">
       <div className="relative w-full aspect-[4/1] md:aspect-[5/1] max-h-[130px] md:max-h-[160px] min-h-[80px]">
-        <img
-          src={imageUrl}
-          alt={currentBanner.title || "بنر تبلیغاتی"}
-          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02] p-1"
-          loading={position === "home_top" ? "eager" : "lazy"}
-          onError={(e) => {
-            // در صورت شکست لود تصویر، آن را مخفی کن
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
+        {imgError ? (
+          <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-sm">
+            تصویر بنر در دسترس نیست
+          </div>
+        ) : (
+          <img
+            src={imageUrl}
+            alt={currentBanner.title || "بنر تبلیغاتی"}
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02] p-1"
+            loading={position === "home_top" ? "eager" : "lazy"}
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
 
       {currentBanner.description && (

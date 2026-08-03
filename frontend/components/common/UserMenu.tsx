@@ -1,17 +1,15 @@
 "use client";
-import { useAuth } from "@/app/context/AuthContext";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/app/context/AuthContext";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   LogOut,
@@ -32,67 +30,29 @@ import {
   Users,
   Database,
   BarChart3,
-  History,
   Key,
   Webhook,
   BookOpen,
   Bell,
-  LucideIcon,
   ScrollText,
   Activity,
+  Moon,
+  Sun,
 } from "lucide-react";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  avatar?: string;
-  role?: string;
-}
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+// ═══════════════ منوها دقیقاً مطابق نسخه قبلی شما ═══════════════
 
-interface MenuItem {
-  icon: LucideIcon;
+const defaultMenuItems: Array<{
+  icon: any;
   label: string;
   href: string;
   divider?: boolean;
-}
-
-interface UserMenuProps {
-  onLogout?: () => void;
-  customMenuItems?: MenuItem[];
-}
-
-const getFullImageUrl = (imagePath?: string): string => {
-  if (!imagePath) return "";
-  if (imagePath.startsWith("http")) return imagePath;
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-  const baseUrl = apiUrl.replace(/\/api$/, "");
-
-  let cleanPath = imagePath;
-  if (cleanPath.startsWith("/api/")) {
-    cleanPath = cleanPath.replace("/api", "");
-  }
-
-  if (cleanPath.startsWith("/uploads")) {
-    return `${baseUrl}${cleanPath}`;
-  }
-
-  return `${baseUrl}/uploads/${cleanPath}`;
-};
-
-// ─── منوها (همه با "گزارشات تخلف من" اضافه شده) ───
-
-const defaultMenuItems: MenuItem[] = [
+}> = [
   { icon: User, label: "پروفایل کاربری", href: "/panel/user/profile" },
   { icon: FileText, label: "آگهی‌های من", href: "/panel/user/my-ads" },
   { icon: Heart, label: "نشان شده‌ها", href: "/panel/user/favorites" },
   { icon: MessageCircle, label: "صندوق پیام‌ها", href: "/chats" },
-  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/user/reports-my" }, // 🆕
+  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/user/reports-my" },
   {
     icon: LayoutDashboard,
     label: "داشبورد حساب",
@@ -103,7 +63,12 @@ const defaultMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "راهنما و پشتیبانی", href: "/help" },
 ];
 
-const vipMenuItems: MenuItem[] = [
+const vipMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   { icon: User, label: "پروفایل ویژه", href: "/panel/vip/profile" },
   { icon: Crown, label: "باشگاه مشتریان VIP", href: "/panel/vip/benefits" },
   {
@@ -112,7 +77,7 @@ const vipMenuItems: MenuItem[] = [
     href: "/panel/vip/stats",
   },
   { icon: FileText, label: "آگهی‌های من", href: "/panel/vip/my-ads" },
-  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/vip/reports-my" }, // 🆕
+  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/vip/reports-my" },
   {
     icon: LayoutDashboard,
     label: "داشبورد اختصاصی",
@@ -123,7 +88,12 @@ const vipMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "پشتیبانی اختصاصی", href: "/help" },
 ];
 
-const agentMenuItems: MenuItem[] = [
+const agentMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   { icon: User, label: "پروفایل تجاری", href: "/panel/agent/profile" },
   {
     icon: Building,
@@ -136,7 +106,7 @@ const agentMenuItems: MenuItem[] = [
     label: "گزارشات و آمار فروش",
     href: "/panel/agent/reports",
   },
-  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/agent/reports-my" }, // 🆕
+  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/agent/reports-my" },
   {
     icon: LayoutDashboard,
     label: "پنل مدیریت آژانس",
@@ -147,17 +117,20 @@ const agentMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "راهنما", href: "/help" },
 ];
 
-const expertMenuItems: MenuItem[] = [
+const expertMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   { icon: User, label: "پروفایل کارشناسی", href: "/panel/expert/profile" },
-    { icon: User, label: "پروفایل کارشناسی", href: "/panel/expert/profile" },
-
   {
     icon: Clock,
     label: "آگهی‌های در انتظار بررسی",
     href: "/panel/expert/pending-ads",
   },
   { icon: Flag, label: "گزارشات تخلف کاربران", href: "/panel/expert/reports" },
-  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/expert/reports-my" }, // 🆕
+  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/expert/reports-my" },
   {
     icon: MessageCircle,
     label: "مشاوره‌های فعال",
@@ -173,13 +146,18 @@ const expertMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "راهنما", href: "/help" },
 ];
 
-const developerMenuItems: MenuItem[] = [
+const developerMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   { icon: User, label: "پروفایل", href: "/panel/developer/profile" },
   { icon: Key, label: "API Keys", href: "/panel/developer/api-key" },
   { icon: Webhook, label: "Webhooks", href: "/panel/developer/webhooks" },
   { icon: BookOpen, label: "مستندات", href: "/panel/developer/docs" },
   { icon: Bell, label: "اعلان‌ها", href: "/panel/developer/notifications" },
-  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/developer/reports-my" }, // 🆕
+  { icon: Flag, label: "گزارشات تخلف من", href: "/panel/developer/reports-my" },
   {
     icon: LayoutDashboard,
     label: "داشبورد برنامه‌نویس",
@@ -194,7 +172,12 @@ const developerMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "مرکز راهنما", href: "/help" },
 ];
 
-const adminMenuItems: MenuItem[] = [
+const adminMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   { icon: User, label: "پروفایل ادمین", href: "/panel/admin/profile" },
   { icon: Users, label: "مدیریت کاربری", href: "/panel/admin/users" },
   { icon: FileText, label: "نظارت بر آگهی‌ها", href: "/panel/admin/ads" },
@@ -213,7 +196,12 @@ const adminMenuItems: MenuItem[] = [
   { icon: HelpCircle, label: "مستندات ادمین", href: "/help" },
 ];
 
-const superAdminMenuItems: MenuItem[] = [
+const superAdminMenuItems: Array<{
+  icon: any;
+  label: string;
+  href: string;
+  divider?: boolean;
+}> = [
   {
     icon: User,
     label: "پروفایل مدیر ارشد",
@@ -258,36 +246,65 @@ const superAdminMenuItems: MenuItem[] = [
   },
 ];
 
+// ═══════════════ کامپوننت اصلی UserMenu ═══════════════
+interface UserMenuProps {
+  onLogout?: () => void;
+  customMenuItems?: Array<{
+    icon: any;
+    label: string;
+    href: string;
+    divider?: boolean;
+  }>;
+}
+
 export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const [avatarKey, setAvatarKey] = useState(Date.now());
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isDark, setIsDark] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
+  // همگام‌سازی با تم سیستم
   useEffect(() => {
-    const handleAvatarUpdate = () => setAvatarKey(Date.now());
-    window.addEventListener("avatar-updated", handleAvatarUpdate);
-    return () =>
-      window.removeEventListener("avatar-updated", handleAvatarUpdate);
+    setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  useEffect(() => {
-    setAvatarKey(Date.now());
-  }, [user]);
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle("dark");
+    setIsDark(!isDark);
+  };
 
-  const handleLogout = () => {
-    logout();
-    toast.success("با موفقیت از حساب خود خارج شدید.");
-    onLogout?.();
-    window.dispatchEvent(new Event("avatar-updated"));
-    router.push("/");
+  // بستن منو با کلیک بیرون
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await logout();
+      toast.success("با موفقیت خارج شدید");
+      onLogout?.();
+      router.push("/");
+    } catch {
+      toast.error("خطا در خروج");
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName)
       return `${user.firstName[0]}${user.lastName[0]}`;
     if (user?.firstName) return user.firstName[0];
-    return user?.phone?.slice(-2) || "V";
+    return user?.phone?.slice(-2) || "U";
   };
 
   const getDisplayName = () => {
@@ -297,100 +314,83 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
     return user?.phone || "کاربر مهمان";
   };
 
-  const getRoleBadgeConfig = () => {
-    switch (user?.role) {
-      case "super_admin":
-        return {
-          label: "مدیر ارشد",
-          icon: Star,
-          className:
-            "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20",
-        };
-      case "admin":
-        return {
-          label: "مدیر سیستم",
-          icon: Shield,
-          className:
-            "bg-red-500/10 text-red-600 dark:text-red-400 ring-red-500/20",
-        };
-      case "developer":
-        return {
-          label: "توسعه‌دهنده",
-          icon: Code2,
-          className:
-            "bg-purple-500/10 text-purple-600 dark:text-purple-400 ring-purple-500/20",
-        };
-      case "expert":
-        return {
-          label: "کارشناس رسمی",
-          icon: Shield,
-          className:
-            "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-blue-500/20",
-        };
-      case "agent":
-        return {
-          label: "آژانس املاک/خودرو",
-          icon: Building,
-          className:
-            "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-cyan-500/20",
-        };
+  const role = user?.role || "user";
+
+  const roleBadge = () => {
+    switch (role) {
       case "vip":
-        return {
-          label: "عضو ویژه (VIP)",
-          icon: Crown,
-          className:
-            "bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-700 dark:text-amber-300 ring-amber-500/30",
-        };
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+            <Crown className="w-3 h-3" /> VIP
+          </span>
+        );
+      case "agent":
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded-full">
+            <Building className="w-3 h-3" /> مشاور
+          </span>
+        );
+      case "developer":
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full">
+            <Code2 className="w-3 h-3" /> توسعه‌دهنده
+          </span>
+        );
+      case "expert":
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            <Shield className="w-3 h-3" /> کارشناس
+          </span>
+        );
+      case "admin":
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full">
+            <Shield className="w-3 h-3" /> ادمین
+          </span>
+        );
+      case "super_admin":
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full">
+            <Shield className="w-3 h-3" /> مدیر ارشد
+          </span>
+        );
       default:
-        return {
-          label: "کاربر عادی",
-          icon: User,
-          className: "bg-primary/10 text-primary ring-primary/20",
-        };
+        return (
+          <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+            <User className="w-3 h-3" /> کاربر
+          </span>
+        );
     }
   };
-
-  const roleConfig = getRoleBadgeConfig();
-  const RoleIcon = roleConfig.icon;
-
-  const profileImageSrc = user?.avatar
-    ? getFullImageUrl(user.avatar)
-    : "/images/user.webp";
-
-  const getAvatarUrl = () => {
-    if (!user?.avatar) return "";
-    if (user.avatar.startsWith("http")) return user.avatar;
-    return `${API_BASE.replace("/api", "")}${user.avatar}?t=${avatarKey}`;
-  };
-  const avatarSrc = user?.avatar ? getAvatarUrl() : "/images/user.webp";
 
   const menuItems =
     customMenuItems ||
     (() => {
-      switch (user?.role) {
+      switch (role) {
+        case "vip":
+          return vipMenuItems;
+        case "agent":
+          return agentMenuItems;
         case "developer":
           return developerMenuItems;
         case "expert":
           return expertMenuItems;
-        case "agent":
-          return agentMenuItems;
         case "admin":
           return adminMenuItems;
         case "super_admin":
           return superAdminMenuItems;
-        case "vip":
-          return vipMenuItems;
         default:
           return defaultMenuItems;
       }
     })();
 
+  // منبع تصویر آواتار (همان helper مرکزی که در صفحه پروفایل استفاده می‌شود)
+const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
   if (!user) {
     return (
       <Button
-        variant="default"
         onClick={() => router.push("/auth")}
-        className="gap-2 rounded-xl px-5 h-9 font-bold bg-gradient-to-r from-primary to-primary/90 text-white shadow-md hover:shadow-primary/20 active:scale-95 transition-all"
+        className="gap-2 rounded-xl px-5 h-9 font-bold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
       >
         <User className="w-4 h-4" />
         ورود / عضویت
@@ -399,102 +399,115 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} dir="rtl">
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 rounded-full hover:bg-muted/60 transition-all duration-300"
-        >
-          <Avatar className="h-9 w-9 ring-2 ring-transparent hover:ring-primary/40 transition-all duration-300">
-            <AvatarImage src="/images/user.webp" className="object-cover" />
-            <AvatarFallback className="bg-muted text-foreground font-black text-sm">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent
-        className="w-80 md:w-[340px] rounded-2xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.3)] border border-border/50 bg-background/95 backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300 text-right"
-        align="center"
-        sideOffset={10}
+    <div ref={menuRef} className="relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="rounded-full p-0 h-9 w-9 md:h-10 md:w-10 ring-2 ring-transparent hover:ring-primary/30 transition-all"
+        onClick={() => setOpen(!open)}
+        aria-label="منوی کاربری"
       >
-        {/* هدر دراپ‌داون */}
-        {/* هدر دراپ‌داون */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/20 backdrop-blur-sm mb-2">
-          <Avatar className="w-14 h-14 ring-2 ring-primary/20 shadow-lg rounded-full">
-            <AvatarImage
-              key={avatarKey}
-              src={avatarSrc}
-              className="object-cover"
-            />
-            {/* دیگر متن نمایش داده نمی‌شود – همیشه تصویر user.webp را نشان می‌دهد */}
-            <AvatarFallback>
-              <img
-                src="/images/user.webp"
-                alt="avatar"
-                className="w-full h-full object-cover rounded-full"
-              />
-            </AvatarFallback>
-          </Avatar>
+        <Avatar className="h-full w-full">
+          <AvatarImage src={avatarSrc} className="object-cover" />
+          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm md:text-base">
+            {getInitials()}
+          </AvatarFallback>
+        </Avatar>
+      </Button>
 
-          <div className="flex-1 min-w-0 text-right">
-            <p className="font-black text-[13px] text-foreground tracking-tight truncate">
-              {getDisplayName()}
-            </p>
-            <p className="text-[11px] text-muted-foreground/80 font-mono mt-0.5 tracking-wider truncate">
-              {user.phone}
-            </p>
-
-            <div
-              className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-extrabold mt-1.5 ring-1",
-                roleConfig.className,
-              )}
-            >
-              <RoleIcon className="w-2.5 h-2.5 shrink-0" />
-              <span>{roleConfig.label}</span>
-            </div>
-          </div>
-        </div>
-
-        <DropdownMenuSeparator className="my-1.5 opacity-60" />
-
-        <DropdownMenuGroup>
-          {menuItems.map((item, index) => {
-            const ItemIcon = item.icon;
-            return (
-              <div key={item.label}>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setIsOpen(false);
-                    router.push(item.href);
-                  }}
-                  className="cursor-pointer rounded-xl py-2.5 px-3 text-xs font-bold text-foreground/80 hover:bg-primary/5 hover:text-primary focus:bg-primary/5 focus:text-primary transition-all duration-200 group flex items-center justify-start gap-3"
-                >
-                  <ItemIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary group-focus:text-primary transition-all duration-300 group-hover:scale-110 shrink-0" />
-                  <span className="flex-1 text-right">{item.label}</span>
-                  <ChevronLeft className="w-3 h-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all duration-300 transform group-hover:-translate-x-1" />
-                </DropdownMenuItem>
-                {item.divider && index !== menuItems.length - 1 && (
-                  <DropdownMenuSeparator className="my-1.5 opacity-60" />
-                )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute top-full mt-2 left-0 w-72 rounded-2xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-white/5 z-50 overflow-hidden"
+          >
+            {/* هدر پروفایل */}
+            <div className="p-4 border-b border-border/40 bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                  <AvatarImage src={avatarSrc} className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-primary font-black">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-extrabold truncate">
+                    {getDisplayName()}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.phone || "بدون شماره"}
+                  </p>
+                </div>
               </div>
-            );
-          })}
-        </DropdownMenuGroup>
+              <div className="mt-3 flex justify-between items-center">
+                {roleBadge()}
+                <Link
+                  href={`/panel/${role}/profile`}
+                  onClick={() => setOpen(false)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  ویرایش پروفایل
+                </Link>
+              </div>
+            </div>
 
-        <DropdownMenuSeparator className="my-1.5 opacity-60" />
+            {/* لینک‌های منو */}
+            <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
+              {menuItems.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label}>
+                    {item.divider && index !== 0 && (
+                      <div className="my-1 border-t border-border/30" />
+                    )}
+                    <Link
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-muted/60 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4 text-muted-foreground" />
+                        <span>{item.label}</span>
+                      </div>
+                      <ChevronLeft className="w-4 h-4 text-muted-foreground/50" />
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
 
-        <DropdownMenuItem
-          onClick={handleLogout}
-          className="cursor-pointer rounded-xl py-2.5 px-3 text-xs font-bold text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 focus:bg-destructive/5 transition-all duration-200 group flex items-center justify-start gap-3"
-        >
-          <LogOut className="w-4 h-4 text-destructive/80 group-hover:scale-110 transition-transform duration-300 shrink-0" />
-          <span className="flex-1 text-right">خروج امن از حساب</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {/* فوتر: حالت شب و خروج */}
+            <div className="p-2 border-t border-border/40 bg-muted/20">
+              <button
+                onClick={toggleTheme}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-muted/60 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {isDark ? (
+                    <Moon className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Sun className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <span>حالت شب</span>
+                </div>
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={logoutLoading}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-bold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4 h-4" />
+                  <span>{logoutLoading ? "در حال خروج..." : "خروج"}</span>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

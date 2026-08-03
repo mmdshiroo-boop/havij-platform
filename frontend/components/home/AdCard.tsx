@@ -14,6 +14,7 @@ import {
   HiChevronLeft,
 } from "react-icons/hi2";
 import { ImageOff, MapPin, Tag, Crown, Image as ImageIcon } from "lucide-react";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 
 export interface AdCardProps {
   _id: string;
@@ -63,25 +64,7 @@ const AD_TYPE_CONFIG: Record<
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[+d]);
 
-// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه Railway
-const getImageUrl = (imagePath?: string): string => {
-  if (!imagePath) return "/placeholder.jpg";
-  const backendBase = (
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-    "http://localhost:5001"
-  );
-  // تصاویر خارجی (غیر localhost) را بدون تغییر برگردان
-  if (imagePath.startsWith("http") && !imagePath.includes("localhost:5001")) return imagePath;
-  // جایگزینی localhost با آدرس Railway
-  if (imagePath.startsWith("http://localhost:5001")) {
-    return imagePath.replace("http://localhost:5001", backendBase);
-  }
-  // اگر مسیر نسبی باشد (با / شروع شود)
-  if (imagePath.startsWith("/")) {
-    return backendBase + imagePath;
-  }
-  return imagePath;
-};
+// ❌ تابع getImageUrl محلی حذف شد
 
 const formatRelativeDate = (dateString: string): string => {
   if (!dateString) return "";
@@ -215,8 +198,7 @@ export function AdCard({
   const timeStr = formatRelativeDate(createdAt);
 
   return (
-    <Link href={`/ad/${_id}`} className="block group">
-      <div
+<Link href={`/ad/${_id}`} className="block group h-full flex flex-col">      <div
         dir="rtl"
         className="flex flex-col h-full rounded-2xl border border-border/50 bg-card
                    shadow-sm hover:shadow-md hover:border-border transition-all duration-300 overflow-hidden
@@ -238,7 +220,7 @@ export function AdCard({
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                src={getImageUrl(images[imgIndex])}
+                src={getImageUrl(images[imgIndex])} // ✅ helper مرکزی
                 alt={title}
                 className="absolute inset-0 w-full h-full object-cover"
                 draggable={false}
