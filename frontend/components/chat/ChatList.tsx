@@ -8,6 +8,8 @@ import { Conversation } from "@/services/api/message.api";
 import { useAuth } from "@/app/context/AuthContext";
 import { MessageCircle, Bell, ChevronLeft } from "lucide-react";
 import { getNotificationRolePath } from "@/lib/notification-utils";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
+
 interface ChatListProps {
   conversations: Conversation[];
   loading: boolean;
@@ -23,6 +25,7 @@ export function ChatList({
 }: ChatListProps) {
   const { user } = useAuth();
   const notificationPath = getNotificationRolePath(user?.role);
+
   const getOtherUser = (conv: Conversation) => {
     if (!user) return null;
     return conv.participants?.find((p) => p._id !== user._id) || null;
@@ -33,12 +36,7 @@ export function ChatList({
     return otherUser.firstName?.[0] || otherUser.phone?.[0] || "?";
   };
 
-  const getImageUrl = (avatar?: string) => {
-    if (!avatar) return "";
-    if (avatar.startsWith("http")) return avatar;
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-    return `${base.replace("/api", "")}${avatar}`;
-  };
+  // ❌ تابع محلی getImageUrl حذف شد و از helper مرکزی استفاده می‌کنیم
 
   if (loading) {
     return (
@@ -104,7 +102,9 @@ export function ChatList({
             >
               <div className="relative">
                 <Avatar className="h-12 w-12 shrink-0 border border-border/50 shadow-sm">
-                  <AvatarImage src={getImageUrl(otherUser?.avatar)} />
+                  <AvatarImage
+                    src={getImageUrl(otherUser?.avatar)} // ✅ helper مرکزی
+                  />
                   <AvatarFallback className="bg-primary/10 text-primary font-bold">
                     {getInitials(otherUser)}
                   </AvatarFallback>

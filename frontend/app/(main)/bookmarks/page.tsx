@@ -11,14 +11,7 @@ import { favoriteApi, FavoriteAd } from "@/services/api/favorite.api";
 import { Trash2, Bookmark, MapPin, ImageOff, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-
-const getImageUrl = (path?: string) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${API_BASE.replace("/api", "")}${path}`;
-};
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
 
 const formatPrice = (price?: number | null) => {
   if (!price || price === 0) return "توافقی";
@@ -127,7 +120,7 @@ export default function BookmarksPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {ads.map((ad) => {
-            const imageSrc = getImageUrl(ad.images?.[0]);
+            const imageSrc = getImageUrl(ad.images?.[0]); // ✅ helper مرکزی
             return (
               <Link key={ad._id} href={`/ad/${ad._id}`} className="block group">
                 {/* ساختار کارت آگهی (بدون تغییر) */}

@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-
 import { AppProviders } from "@/components/providers/app-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SettingsProvider } from "./context/SettingsContext";
 import PageViewLogger from "@/components/ui/PageViewLogger";
 import { Toaster } from "sonner";
 
-export const dynamic = 'force-dynamic'; // ← این خط اضافه شد
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "پلتفرم آگهی هویج",
@@ -42,6 +41,7 @@ export default function RootLayout({
                 richColors={false}
                 closeButton
                 gap={8}
+                style={{ zIndex: 99999 }}  // ← این خط بسیار مهم است
                 toastOptions={{
                   style: {
                     direction: "rtl",

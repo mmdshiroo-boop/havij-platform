@@ -18,22 +18,7 @@ import AdImageGallery from "@/components/ad/AdGallery";
 import { AdBreadcrumb } from "@/components/ad/AdBreadcrumb";
 import { AdActions } from "@/components/ad/AdActions";
 import { AdMap } from "@/components/ad/AdMap";
-
-// ✅ تابع اصلاح‌شده برای جایگزینی localhost با دامنه Railway
-const getImageUrl = (url: string) => {
-  if (!url) return "/placeholder.jpg";
-  const backendBase = (
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-    "http://localhost:5001"
-  );
-  if (url.startsWith("http://localhost:5001")) {
-    return url.replace("http://localhost:5001", backendBase);
-  }
-  if (url.startsWith("/")) {
-    return backendBase + url;
-  }
-  return url;
-};
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
 
 interface AdDetail {
   _id: string;
@@ -195,7 +180,7 @@ export default function AdDetailPage() {
       >
         {ad.images && ad.images.length > 0 ? (
           <img
-            src={getImageUrl(ad.images[imgIdx] || "/placeholder.jpg")}
+            src={getImageUrl(ad.images[imgIdx] || "/placeholder.jpg")} // ✅ helper مرکزی
             alt={ad.title}
             className="w-full h-full object-cover"
           />

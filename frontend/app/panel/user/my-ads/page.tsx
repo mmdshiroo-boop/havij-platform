@@ -1,4 +1,3 @@
-// app/panel/user/my-ads/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -41,17 +40,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
 
 const ITEMS_PER_PAGE = 10;
-
-const getImageUrl = (imagePath?: string): string => {
-  if (!imagePath) return "/placeholder.jpg";
-  if (imagePath.startsWith("http")) return imagePath;
-  const base =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-    "http://localhost:5001";
-  return `${base}${imagePath}`;
-};
 
 const formatPrice = (price: number) => {
   if (!price || price === 0) return "توافقی";
@@ -97,7 +88,6 @@ export default function MyAdsPage() {
     }
   }, [page, statusFilter]);
 
-  // دریافت آمار کلی (فقط یک بار)
   const fetchCounts = useCallback(async () => {
     try {
       const [all, active, pending, sold] = await Promise.all([
@@ -326,7 +316,7 @@ export default function MyAdsPage() {
                       alt={ad.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.jpg";
+                        (e.target as HTMLImageElement).src = "/images/user.webp";
                       }}
                     />
                     <div className="absolute top-2 right-2 sm:hidden">

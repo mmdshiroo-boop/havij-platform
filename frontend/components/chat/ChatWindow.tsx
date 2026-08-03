@@ -41,28 +41,9 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { messageApi } from "@/services/api/message.api";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 
-// ---- helpers ----
-const getBaseUrl = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
-  return apiUrl.replace(/\/api$/, "");
-};
-
-const getImageUrl = (avatar?: string) => {
-  if (!avatar) return "";
-  if (avatar.startsWith("http")) return avatar;
-  const base = getBaseUrl();
-  const cleanAvatar = avatar.startsWith("/") ? avatar : `/${avatar}`;
-  return `${base}${cleanAvatar}`;
-};
-
-const getFileUrl = (filePath?: string) => {
-  if (!filePath) return "";
-  if (filePath.startsWith("http")) return filePath;
-  const base = getBaseUrl();
-  const cleanPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
-  return `${base}${cleanPath}`;
-};
+// ---- helpers (فقط formatFileSize و getFileTypeFromUrl باقی می‌مانند) ----
 
 const formatFileSize = (bytes: number) => {
   if (!bytes) return "";
@@ -368,7 +349,7 @@ export function ChatWindow({
           <Avatar className="h-9 w-9 md:h-10 md:w-10 ring-2 ring-primary/10 shadow-sm">
             {otherParticipant?.avatar ? (
               <AvatarImage
-                src={getImageUrl(otherParticipant.avatar)}
+                src={getImageUrl(otherParticipant.avatar)} // ✅
                 alt="پروفایل مخاطب"
               />
             ) : (
@@ -403,7 +384,7 @@ export function ChatWindow({
           <div className="flex items-center gap-2 md:gap-3 max-w-full">
             {conversation.ad.images?.[0] && (
               <img
-                src={getFileUrl(conversation.ad.images[0])}
+                src={getImageUrl(conversation.ad.images[0])} // ✅
                 alt={conversation.ad.title}
                 className="w-9 h-9 md:w-10 md:h-10 rounded-lg object-cover shadow-sm shrink-0"
               />
@@ -525,10 +506,11 @@ export function ChatWindow({
                     String(currentUserId) === String(senderId);
 
                   const avatarSrc = isMine
-                    ? getImageUrl(user?.avatar)
+                    ? getImageUrl(user?.avatar) // ✅
                     : getImageUrl(
                         msg.sender?.avatar || otherParticipant?.avatar,
-                      );
+                      ); // ✅
+
                   return (
                     <motion.div
                       key={msg._id}
@@ -573,7 +555,7 @@ export function ChatWindow({
                               <div className="mb-2 max-w-full overflow-hidden rounded-xl">
                                 {getFileTypeFromUrl(msg.fileUrl) === "image" ? (
                                   <img
-                                    src={getFileUrl(msg.fileUrl)}
+                                    src={getImageUrl(msg.fileUrl)} // ✅
                                     alt="تصویر ارسالی"
                                     className="max-h-60 w-full object-cover cursor-pointer rounded-lg hover:opacity-95 transition-opacity"
                                     onClick={() => {
@@ -581,21 +563,21 @@ export function ChatWindow({
                                         typeof setPreviewImage === "function"
                                       ) {
                                         setPreviewImage(
-                                          getFileUrl(msg.fileUrl),
-                                        );
+                                          getImageUrl(msg.fileUrl),
+                                        ); // ✅
                                       }
                                     }}
                                   />
                                 ) : getFileTypeFromUrl(msg.fileUrl) ===
                                   "video" ? (
                                   <video
-                                    src={getFileUrl(msg.fileUrl)}
+                                    src={getImageUrl(msg.fileUrl)} // ✅
                                     controls
                                     className="max-h-60 w-full rounded-lg bg-black"
                                   />
                                 ) : (
                                   <a
-                                    href={getFileUrl(msg.fileUrl)}
+                                    href={getImageUrl(msg.fileUrl)} // ✅
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className={`flex items-center gap-3 p-2.5 rounded-xl border transition-colors ${
@@ -757,7 +739,7 @@ export function ChatWindow({
           <div className="flex flex-col items-center space-y-4 pt-3">
             <Avatar className="h-20 w-20 md:h-24 md:w-24 ring-4 ring-primary/10 shadow-lg">
               {otherParticipant?.avatar ? (
-                <AvatarImage src={getImageUrl(otherParticipant.avatar)} />
+                <AvatarImage src={getImageUrl(otherParticipant.avatar)} /> // ✅
               ) : (
                 <AvatarImage src="/images/user.webp" />
               )}
