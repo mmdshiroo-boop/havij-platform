@@ -1,4 +1,4 @@
-// app/panel/agent/my-ads/edit/[id]/page.tsx
+// app/panel/agent/my-ads/edit-ad/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -141,7 +141,9 @@ export default function AgentEditAdPage() {
                 </Label>
                 <Input
                   value={formData.title || ""}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                   required
                 />
@@ -153,7 +155,9 @@ export default function AgentEditAdPage() {
                 </Label>
                 <Select
                   value={formData.categoryId || formData.category?._id || ""}
-                  onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, categoryId: value })
+                  }
                 >
                   <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
                     <SelectValue placeholder="انتخاب دسته‌بندی" />
@@ -176,7 +180,12 @@ export default function AgentEditAdPage() {
                   <Input
                     type="number"
                     value={formData.price || ""}
-                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        price: parseInt(e.target.value) || 0,
+                      })
+                    }
                     className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                     required
                   />
@@ -208,7 +217,12 @@ export default function AgentEditAdPage() {
                 <Label className="text-sm font-bold">نوع آگهی</Label>
                 <Select
                   value={formData.adType || "sale"}
-                  onValueChange={(value) => setFormData({ ...formData, adType: value })}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      adType: value as NonNullable<Ad["adType"]>,
+                    })
+                  }
                 >
                   <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
                     <SelectValue />
@@ -229,7 +243,9 @@ export default function AgentEditAdPage() {
                 </Label>
                 <Textarea
                   value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   rows={6}
                   className="rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary resize-none"
                   required
@@ -256,7 +272,9 @@ export default function AgentEditAdPage() {
                   </Label>
                   <Input
                     value={formData.city || ""}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
                     className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                     required
                   />
@@ -265,7 +283,9 @@ export default function AgentEditAdPage() {
                   <Label className="text-sm font-bold">محله</Label>
                   <Input
                     value={formData.district || ""}
-                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, district: e.target.value })
+                    }
                     className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                   />
                 </div>
@@ -274,7 +294,9 @@ export default function AgentEditAdPage() {
                 <Label className="text-sm font-bold">آدرس دقیق</Label>
                 <Input
                   value={formData.address || ""}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                 />
               </div>
@@ -299,7 +321,9 @@ export default function AgentEditAdPage() {
                   </Label>
                   <Input
                     value={formData.contactPhone || ""}
-                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactPhone: e.target.value })
+                    }
                     className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                     required
                   />
@@ -308,7 +332,9 @@ export default function AgentEditAdPage() {
                   <Label className="text-sm font-bold">نام تماس‌گیرنده</Label>
                   <Input
                     value={formData.contactName || ""}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactName: e.target.value })
+                    }
                     className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
                   />
                 </div>
@@ -318,9 +344,19 @@ export default function AgentEditAdPage() {
         </motion.div>
 
         {/* دکمه‌ها */}
-        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
-          <Link href="/panel/agent/my-ads" className="w-full sm:w-auto order-2 sm:order-1">
-            <Button type="button" variant="outline" className="w-full gap-2 rounded-xl h-10 border-border/60 hover:bg-muted">
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row justify-end gap-3 pt-2"
+        >
+          <Link
+            href="/panel/agent/my-ads"
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2 rounded-xl h-10 border-border/60 hover:bg-muted"
+            >
               انصراف
             </Button>
           </Link>
