@@ -1,4 +1,3 @@
-// AuthContext.tsx
 "use client";
 
 import {
@@ -11,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/services/api/client";
-import { User } from "@/types"; // <--- این خط اضافه شد
+import { User } from "@/types";
 
 interface AuthContextType {
   user: User | null;
@@ -72,12 +71,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setToken(null);
-    setUser(null);
-    router.push("/");
+  const logout = async () => {
+    try {
+      // ابتدا سعی کن کاربر را آفلاین کنی (اگر خطا دهد نادیده گرفته می‌شود)
+      await apiClient.post("/locations/me/offline").catch(() => {});
+    } finally {
+      // حذف توکن و پاکسازی state در همه حالات
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setToken(null);
+      setUser(null);
+      router.push("/");
+    }
   };
 
   const refreshUser = useCallback(async () => {

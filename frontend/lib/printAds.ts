@@ -919,8 +919,12 @@ function openPrintWindow(html: string) {
    PUBLIC API
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════
+   PUBLIC API
+   ═══════════════════════════════════════════════════════════════════ */
+
 export async function printSingleAd(ad: PrintAd, options?: PrintOptions) {
-  const baseUrl = options?.baseUrl || "http://localhost:5001";
+  const baseUrl = options?.baseUrl || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001";
   options?.onProgress?.("در حال بارگذاری تصاویر...");
 
   const imgSrcs = await loadImagesAsBase64(ad.images || [], baseUrl);
@@ -941,7 +945,7 @@ export async function printSingleAd(ad: PrintAd, options?: PrintOptions) {
 
 export async function printBulkAds(ads: PrintAd[], options?: PrintOptions) {
   if (ads.length === 0) return;
-  const baseUrl = options?.baseUrl || "http://localhost:5001";
+  const baseUrl = options?.baseUrl || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001";
 
   options?.onProgress?.(`در حال بارگذاری تصاویر ${toFa(ads.length)} آگهی...`);
   const allImgSrcs = await Promise.all(
@@ -963,7 +967,7 @@ export async function printSingleAdBrowser(
   ad: PrintAd,
   options?: PrintOptions,
 ) {
-  const baseUrl = options?.baseUrl || "http://localhost:5001";
+  const baseUrl = options?.baseUrl || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001";
   const imgSrcs = await loadImagesAsBase64(ad.images || [], baseUrl);
   const html = buildFullHTML(
     [ad],
@@ -981,7 +985,7 @@ export async function printBulkAdsBrowser(
   options?: PrintOptions,
 ) {
   if (ads.length === 0) return;
-  const baseUrl = options?.baseUrl || "http://localhost:5001";
+  const baseUrl = options?.baseUrl || process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5001";
   const allImgSrcs = await Promise.all(
     ads.map(async (ad) => await loadImagesAsBase64(ad.images || [], baseUrl)),
   );

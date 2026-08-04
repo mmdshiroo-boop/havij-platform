@@ -1,3 +1,4 @@
+// app/panel/expert/verify-ads/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -26,7 +27,6 @@ import {
   ChevronRight,
   CheckCircle,
   XCircle,
-  ArrowUpRight,
   AlertTriangle,
   Eye,
 } from "lucide-react";
@@ -34,14 +34,15 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { toast } from "sonner";
 import { expertApi } from "@/services/api/expert.api";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
+import { cn } from "@/lib/utils";
 
-// ─── فرمت‌دهنده‌ها ──────────────────────
 const formatPrice = (price: number) => {
   if (!price) return "توافقی";
   if (price >= 1_000_000_000)
     return `${(price / 1_000_000_000).toFixed(1)} میلیارد`;
   if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(0)} میلیون`;
-  return price.toLocaleString() + " تومان";
+  return price.toLocaleString("fa-IR") + " تومان";
 };
 
 const getTimeAgo = (dateString: string) => {
@@ -52,10 +53,14 @@ const getTimeAgo = (dateString: string) => {
   return `${Math.floor(diffHrs / 24)} روز`;
 };
 
-const getImageUrl = (url: string) => {
-  if (!url) return "/placeholder.jpg";
-  if (url.startsWith("http")) return url;
-  return `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001"}${url}`;
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
 };
 
 export default function VerifyAdsPage() {
@@ -68,7 +73,6 @@ export default function VerifyAdsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const limit = 12;
 
-  // عملیات تأیید/رد
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectAdId, setRejectAdId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -106,13 +110,12 @@ export default function VerifyAdsPage() {
     toast.success("لیست بروزرسانی شد");
   };
 
-  // تأیید آگهی
   const handleApprove = async (id: string, title: string) => {
     setActionLoading(id);
     try {
       await expertApi.approveAd(id);
       toast.success(`آگهی "${title}" تأیید شد`);
-      fetchAds(); // بروزرسانی لیست
+      fetchAds();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "خطا در تأیید آگهی");
     } finally {
@@ -120,13 +123,11 @@ export default function VerifyAdsPage() {
     }
   };
 
-  // باز کردن مودال رد
   const openRejectModal = (id: string) => {
     setRejectAdId(id);
     setRejectReason("");
   };
 
-  // ارسال رد
   const handleReject = async () => {
     if (!rejectAdId) return;
     if (!rejectReason.trim()) {
@@ -147,81 +148,80 @@ export default function VerifyAdsPage() {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* هدر */}
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-amber-500/15 via-amber-500/5 to-transparent p-6 border border-amber-500/10 shadow-sm"
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-100 dark:bg-amber-500/10 rounded-xl ring-1 ring-amber-200/50 dark:ring-amber-500/20">
-              <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold">بررسی و تأیید آگهی‌ها</h1>
-              <p className="text-sm text-muted-foreground">
-                {totalAds > 0
-                  ? `${totalAds} آگهی در انتظار`
-                  : "لیست آگهی‌های در انتظار"}
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+            <Clock className="w-6 h-6" />
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-amber-500 text-white px-4 py-2 rounded-full text-xs font-bold gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5" /> در انتظار
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="gap-1.5 rounded-xl"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-              />
-              بروزرسانی
-            </Button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">
+              بررسی و تأیید آگهی‌ها
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {totalAds > 0
+                ? `${totalAds.toLocaleString("fa-IR")} آگهی در انتظار`
+                : "لیست آگهی‌های در انتظار"}
+            </p>
           </div>
+        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 px-4 py-2 rounded-full text-xs font-bold gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> در انتظار
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-1.5 rounded-xl border-border/60 hover:bg-muted"
+          >
+            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+            {refreshing ? "در حال بروزرسانی..." : "بروزرسانی"}
+          </Button>
         </div>
       </motion.div>
 
-      {/* جستجو */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      {/* Search */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="جستجوی عنوان، شهر..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pr-10 rounded-xl bg-muted/30 border-0 focus:ring-amber-500"
+            className="pr-9 rounded-xl h-10 bg-muted/40 border-border/60 focus:ring-primary"
           />
           {searchTerm && (
             <button
-              onClick={() => {
-                setSearchTerm("");
-                setPage(1);
-              }}
+              onClick={() => { setSearchTerm(""); setPage(1); }}
               className="absolute left-3 top-1/2 -translate-y-1/2"
             >
-              <X className="w-4 h-4 text-muted-foreground hover:text-amber-500" />
+              <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
             </button>
           )}
         </div>
         <Button
           onClick={handleSearch}
           variant="outline"
-          className="rounded-xl gap-1"
+          className="rounded-xl h-10 border-border/60 hover:bg-muted gap-1.5"
         >
           <Search className="w-4 h-4" /> جستجو
         </Button>
       </div>
 
-      {/* لیست */}
+      {/* Content */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
@@ -229,47 +229,41 @@ export default function VerifyAdsPage() {
           ))}
         </div>
       ) : ads.length === 0 ? (
-        <Card className="border-0 shadow-md">
-          <CardContent className="py-16 text-center text-muted-foreground">
-            <CheckCircle className="w-14 h-14 mx-auto mb-4 text-amber-500/20" />
-            <p className="text-sm font-medium">
+        <Card className="border-2 border-dashed border-border/60 bg-muted/20 rounded-2xl">
+          <CardContent className="py-16 text-center max-w-md mx-auto">
+            <div className="w-16 h-16 mx-auto mb-4 bg-muted flex items-center justify-center rounded-full">
+              <CheckCircle className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-base font-black text-foreground mb-1.5">
               هیچ آگهی در انتظاری وجود ندارد
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              {searchTerm ? "با عبارت دیگری جستجو کنید" : "آگهی‌های در انتظار تأیید اینجا نمایش داده می‌شوند"}
             </p>
-            {searchTerm && (
-              <p className="text-xs mt-1">با عبارت دیگری جستجو کنید</p>
-            )}
           </CardContent>
         </Card>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {ads.map((ad, index) => (
-              <motion.div
-                key={ad._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Card className="h-full border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group">
-                  {/* تصویر */}
-                  <div className="relative h-32 bg-muted overflow-hidden">
+              <motion.div key={ad._id} variants={itemVariants}>
+                <Card className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm group h-full flex flex-col">
+                  <div className="relative h-40 bg-muted overflow-hidden">
                     {ad.images?.[0] ? (
                       <img
                         src={getImageUrl(ad.images[0])}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         alt={ad.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/user.webp"; }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-500/5 dark:to-amber-500/10">
-                        <FileText className="w-10 h-10 text-amber-300 dark:text-amber-500/30" />
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
+                        <FileText className="w-12 h-12 text-primary/30" />
                       </div>
                     )}
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-amber-500 text-white text-[10px] px-2 py-0.5 shadow-md">
-                        در انتظار
-                      </Badge>
-                    </div>
-                    {/* دکمه مشاهده جزئیات */}
+                    <Badge className="absolute top-2 right-2 bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold">
+                      <Clock className="w-3 h-3 ml-1" /> در انتظار
+                    </Badge>
                     <Link
                       href={`/panel/expert/pending/${ad._id}`}
                       className="absolute bottom-2 left-2 p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
@@ -277,33 +271,22 @@ export default function VerifyAdsPage() {
                       <Eye className="w-3.5 h-3.5" />
                     </Link>
                   </div>
-
-                  <CardContent className="p-3 space-y-1.5">
-                    <Link href={`/panel/expert/pending/${ad._id}`}>
-                      <h3 className="font-bold text-sm line-clamp-1 hover:text-amber-600 transition-colors">
+                  <CardContent className="p-4 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <Link href={`/panel/expert/pending/${ad._id}`} className="font-bold text-sm line-clamp-1 hover:text-primary transition-colors">
                         {ad.title}
-                      </h3>
-                    </Link>
-
-                    <p className="text-base font-extrabold text-foreground">
-                      {formatPrice(ad.price)}
-                    </p>
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1 truncate">
-                        <MapPin className="w-3 h-3 shrink-0" /> {ad.city}
-                      </span>
-                      <span className="flex items-center gap-1 shrink-0">
-                        <Clock className="w-3 h-3" /> {getTimeAgo(ad.createdAt)}
-                      </span>
+                      </Link>
+                      <p className="font-black text-primary text-lg">{formatPrice(ad.price)}</p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-primary/70" />{ad.city || "نامشخص"}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary/70" />{getTimeAgo(ad.createdAt)}</span>
+                      </div>
                     </div>
-
-                    {/* دکمه‌های عملیات */}
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-border/30">
+                    <div className="flex gap-2 pt-3 mt-3 border-t border-border/40">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-8 text-xs gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                        className="flex-1 h-8 text-xs gap-1 rounded-lg text-emerald-600 border-emerald-500/20 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
                         disabled={actionLoading === ad._id}
                         onClick={() => handleApprove(ad._id, ad.title)}
                       >
@@ -317,7 +300,7 @@ export default function VerifyAdsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-8 text-xs gap-1 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:text-red-400 dark:hover:bg-red-500/10"
+                        className="flex-1 h-8 text-xs gap-1 rounded-lg text-rose-600 border-rose-500/20 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                         disabled={actionLoading === ad._id}
                         onClick={() => openRejectModal(ad._id)}
                       >
@@ -331,49 +314,13 @@ export default function VerifyAdsPage() {
             ))}
           </div>
 
-          {/* صفحه‌بندی */}
           {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="gap-1 rounded-full"
-              >
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-xl h-9 gap-1">
                 <ChevronRight className="w-4 h-4" /> قبلی
               </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  let pageNum: number;
-                  if (totalPages <= 7) pageNum = i + 1;
-                  else if (page <= 4) pageNum = i + 1;
-                  else if (page >= totalPages - 3) pageNum = totalPages - 6 + i;
-                  else pageNum = page - 3 + i;
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={page === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPage(pageNum)}
-                      className={`w-8 h-8 p-0 rounded-full ${
-                        page === pageNum
-                          ? "bg-amber-500 hover:bg-amber-600"
-                          : ""
-                      }`}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="gap-1 rounded-full"
-              >
+              <span className="text-sm font-bold px-4">{page} از {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-xl h-9 gap-1">
                 بعدی <ChevronLeft className="w-4 h-4" />
               </Button>
             </div>
@@ -381,20 +328,16 @@ export default function VerifyAdsPage() {
         </>
       )}
 
-      {/* مودال رد */}
-      <Dialog
-        open={!!rejectAdId}
-        onOpenChange={(open) => !open && setRejectAdId(null)}
-      >
-        <DialogContent className="sm:max-w-md" dir="rtl">
+      {/* Reject Modal */}
+      <Dialog open={!!rejectAdId} onOpenChange={(open) => !open && setRejectAdId(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border/50" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-destructive">
               <XCircle className="w-5 h-5" />
               رد آگهی
             </DialogTitle>
             <DialogDescription>
-              لطفاً دلیل رد آگهی را وارد کنید. این دلیل به آژانس نمایش داده
-              خواهد شد.
+              لطفاً دلیل رد آگهی را وارد کنید. این دلیل به آژانس نمایش داده خواهد شد.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
@@ -403,17 +346,18 @@ export default function VerifyAdsPage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={3}
-              className="resize-none"
+              className="resize-none rounded-xl bg-muted/40 border-border/60 focus:ring-primary"
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setRejectAdId(null)}>
+            <Button variant="outline" onClick={() => setRejectAdId(null)} className="rounded-xl">
               انصراف
             </Button>
             <Button
               variant="destructive"
               onClick={handleReject}
               disabled={actionLoading === rejectAdId}
+              className="rounded-xl gap-1"
             >
               {actionLoading === rejectAdId ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -425,6 +369,6 @@ export default function VerifyAdsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

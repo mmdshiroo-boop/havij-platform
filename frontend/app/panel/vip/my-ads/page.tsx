@@ -1,4 +1,3 @@
-// app/panel/vip/my-ads/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -36,22 +35,14 @@ import {
   CheckCircle2,
   XCircle,
   Archive,
-  RefreshCw,
   Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
+import { motion } from "framer-motion";
 
 const ITEMS_PER_PAGE = 10;
-
-const getImageUrl = (imagePath?: string): string => {
-  if (!imagePath) return "/placeholder.jpg";
-  if (imagePath.startsWith("http")) return imagePath;
-  const base =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-    "http://localhost:5001";
-  return `${base}${imagePath}`;
-};
 
 const formatPrice = (price: number) => {
   if (!price || price === 0) return "توافقی";
@@ -59,6 +50,16 @@ const formatPrice = (price: number) => {
 };
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString("fa-IR");
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function VipMyAdsPage() {
   const router = useRouter();
@@ -181,9 +182,18 @@ export default function VipMyAdsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8" dir="rtl">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
       {/* هدر */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-l from-primary/10 to-transparent p-4 rounded-2xl border border-primary/20">
+      <motion.div
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
+      >
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">
             آگهی‌های VIP من
@@ -198,10 +208,13 @@ export default function VipMyAdsPage() {
             ثبت آگهی جدید
           </Button>
         </Link>
-      </div>
+      </motion.div>
 
       {/* کارت‌های آماری */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+      >
         <StatCard
           title="کل آگهی‌ها"
           value={counts.total.toLocaleString()}
@@ -226,7 +239,7 @@ export default function VipMyAdsPage() {
           icon={Archive}
           href="/panel/vip/my-ads?status=sold"
         />
-      </div>
+      </motion.div>
 
       {/* تب‌ها */}
       <div className="w-full overflow-x-auto pb-2">
@@ -319,13 +332,14 @@ export default function VipMyAdsPage() {
                       alt={ad.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.jpg";
+                        (e.target as HTMLImageElement).src =
+                          "/images/user.webp";
                       }}
                     />
                     <div className="absolute top-2 right-2 sm:hidden">
                       {statusBadge(ad.status!)}
                       {ad.isVip && (
-                        <Badge className="bg-primary text-white text-[10px] gap-1 rounded-full px-2 py-0.5 mt-1">
+                        <Badge className="bg-primary text-primary-foreground text-[10px] gap-1 rounded-full px-2 py-0.5 mt-1">
                           <Crown className="w-3 h-3" /> ویژه
                         </Badge>
                       )}
@@ -341,7 +355,7 @@ export default function VipMyAdsPage() {
                         <div className="hidden sm:flex items-center gap-1">
                           {statusBadge(ad.status!)}
                           {ad.isVip && (
-                            <Badge className="bg-primary text-white text-[10px] gap-1 rounded-full px-2.5 py-0.5 shadow-sm">
+                            <Badge className="bg-primary text-primary-foreground text-[10px] gap-1 rounded-full px-2.5 py-0.5 shadow-sm">
                               <Crown className="w-3 h-3" /> ویژه
                             </Badge>
                           )}
@@ -494,6 +508,6 @@ export default function VipMyAdsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }

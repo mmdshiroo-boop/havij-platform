@@ -174,7 +174,7 @@ const expertMenuItems: MenuItem[] = [
   {
     icon: Clock,
     label: "آگهی‌های در انتظار بررسی",
-    href: "/panel/expert/pending-ads",
+    href: "/panel/expert/pending",
   },
   { icon: Flag, label: "گزارشات تخلف کاربران", href: "/panel/expert/reports" },
   { icon: Flag, label: "گزارشات تخلف من", href: "/panel/expert/reports-my" },

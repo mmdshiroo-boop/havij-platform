@@ -1,386 +1,801 @@
-// app/panel/expert/settings/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Settings,
   Bell,
-  Palette,
+  Moon,
   Shield,
   Save,
-  RefreshCw,
   Loader2,
+  Eye,
+  EyeOff,
+  Settings,
+  Mail,
+  Smartphone,
+  Megaphone,
   AlertCircle,
-  Globe,
+  MessageSquare,
+  Palette,
+  Languages,
+  Lock,
   Monitor,
-  Moon,
-  Sun,
+  Tablet,
+  LogOut,
 } from "lucide-react";
-import AccountSecurity from "@/components/ui/AccountSecurity";
 import apiClient from "@/services/api/client";
-import { cn } from "@/lib/utils";
+import ActiveSessions from "@/components/ui/ActiveSessions";
 
-// ─── types ─────────────────────────────
-interface ExpertSettings {
-  theme: "light" | "dark" | "system";
-  language: "fa" | "en";
+// ========================
+// انواع داده
+// ========================
+interface NotificationSettings {
   emailNotifications: boolean;
   smsNotifications: boolean;
+  marketingEmails: boolean;
+  newAdAlerts: boolean;
+  adStatusAlerts: boolean;
+  messageAlerts: boolean;
+  messageAlertSchedule: string;
 }
 
-// ✅ تغییر پیش‌فرض به "light" به‌جای "system"
-const defaults: ExpertSettings = {
-  theme: "light",
-  language: "fa",
-  emailNotifications: true,
-  smsNotifications: false,
-};
+interface Session {
+  _id: string;
+  ip: string;
+  userAgent: string;
+  device: string;
+  browser: string;
+  os: string;
+  lastActive: string;
+  isCurrent: boolean;
+  createdAt: string;
+}
 
-// ─── منوی کناری ─────────────────────────
-const menuItems = [
-  { id: "general", label: "عمومی", icon: Palette },
+const tabs = [
   { id: "notifications", label: "اعلان‌ها", icon: Bell },
+  { id: "appearance", label: "ظاهر", icon: Palette },
   { id: "security", label: "امنیت", icon: Shield },
 ];
 
-export default function ExpertSettingsPage() {
-  const [activeMenu, setActiveMenu] = useState("general");
-  const [settings, setSettings] = useState<ExpertSettings>(defaults);
+export default function VipSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("notifications");
+  const [showPassword, setShowPassword] = useState(false);
+  const [settings, setSettings] = useState<NotificationSettings>({
+    emailNotifications: true,
+    smsNotifications: false,
+    marketingEmails: false,
+    newAdAlerts: true,
+    adStatusAlerts: true,
+    messageAlerts: true,
+    messageAlertSchedule: "always",
+  });
+  const [appearance, setAppearance] = useState({
+    darkMode: false,
+    rtl: true,
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-  // بارگذاری تنظیمات
+  // --- نشست‌ها ---
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [revokingAll, setRevokingAll] = useState(false);
+  const [sessionToRevoke, setSessionToRevoke] = useState<Session | null>(null);
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [showPasswordConfirmDialog, setShowPasswordConfirmDialog] = useState(false);
+
   useEffect(() => {
-    const fetchSettings = async () => {
-      setLoading(true);
-      // localStorage
-      const saved = localStorage.getItem("expertSettings");
-      if (saved) {
-        try {
-          setSettings({ ...defaults, ...JSON.parse(saved) });
-        } catch {}
-      }
-      // تلاش برای گرفتن از سرور
-      try {
-        const response = await apiClient.get("/notifications/settings");
-        const data = response.data.data;
-        setSettings((prev) => ({
-          ...prev,
-          emailNotifications:
-            data.emailNotifications ?? prev.emailNotifications,
-          smsNotifications: data.smsNotifications ?? prev.smsNotifications,
-        }));
-      } catch {}
-      setLoading(false);
-    };
     fetchSettings();
+    fetchSessions();
+    const isDark = localStorage.getItem("theme") === "dark";
+    setAppearance((prev) => ({ ...prev, darkMode: isDark }));
   }, []);
 
-  // اعمال تم (با پیش‌فرض لایت، دیگر به‌طور خودکار دارک نمی‌شود)
-  useEffect(() => {
-    const root = document.documentElement;
-    if (settings.theme === "dark") root.classList.add("dark");
-    else if (settings.theme === "light") root.classList.remove("dark");
-    else {
-      // system: پیروی از سیستم
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-      if (prefersDark) root.classList.add("dark");
-      else root.classList.remove("dark");
+  const fetchSettings = async () => {
+    setLoading(true);
+    try {
+      const response = await apiClient.get("/notifications/settings");
+      const data = response.data.data;
+      setSettings({
+        emailNotifications: data.emailNotifications ?? true,
+        smsNotifications: data.smsNotifications ?? false,
+        marketingEmails: data.marketingEmails ?? false,
+        newAdAlerts: data.newAdAlerts ?? true,
+        adStatusAlerts: data.adStatusAlerts ?? true,
+        messageAlerts: data.messageAlerts ?? true,
+        messageAlertSchedule: data.messageAlertSchedule || "always",
+      });
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [settings.theme]);
+  };
 
-  const handleSave = async () => {
+  const fetchSessions = async () => {
+    setSessionsLoading(true);
+    try {
+      const response = await apiClient.get("/users/sessions");
+      setSessions(response.data.data);
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+      toast.error("خطا در دریافت نشست‌های فعال");
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !appearance.darkMode;
+    setAppearance({ ...appearance, darkMode: newDarkMode });
+    if (newDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+    toast.success(newDarkMode ? "حالت تاریک فعال شد" : "حالت روشن فعال شد");
+  };
+
+  const handleSaveNotifications = async () => {
     setSaving(true);
     try {
-      localStorage.setItem("expertSettings", JSON.stringify(settings));
-      await apiClient.put("/notifications/settings", {
-        emailNotifications: settings.emailNotifications,
-        smsNotifications: settings.smsNotifications,
-      });
-      toast.success("تنظیمات با موفقیت ذخیره شد");
-      setIsDirty(false);
+      await apiClient.put("/notifications/settings", settings);
+      toast.success("تنظیمات اعلان‌ها با موفقیت ذخیره شد");
     } catch (error: any) {
-      toast.error("خطا در ذخیره تنظیمات");
+      toast.error(error.response?.data?.message || "خطا در ذخیره تنظیمات");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    setSettings(defaults);
-    localStorage.removeItem("expertSettings");
-    setIsDirty(false);
-    toast.success("تنظیمات به پیش‌فرض بازنشانی شد");
+  const handleSaveAppearance = () => {
+    toast.success("تنظیمات ظاهر با موفقیت ذخیره شد");
   };
 
-  const updateSetting = <K extends keyof ExpertSettings>(
-    key: K,
-    value: ExpertSettings[K],
-  ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-    setIsDirty(true);
-  };
-
-  // ─── محتوای هر تب ─────────────────────
-  const renderContent = () => {
-    switch (activeMenu) {
-      case "general":
-        return (
-          <div className="space-y-5">
-            <Card>
-              <CardHeader className="bg-muted/40 border-b px-6 py-4">
-                <CardTitle className="flex items-center gap-2 text-base font-bold">
-                  <Globe className="h-4 w-4 text-primary" />
-                  تنظیمات ظاهری
-                </CardTitle>
-                <CardDescription>انتخاب تم و زبان رابط کاربری</CardDescription>
-              </CardHeader>
-              <CardContent className="px-6 py-5 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Label className="text-sm font-semibold">تم برنامه</Label>
-                    <p className="text-xs text-muted-foreground">
-                      روشن، تاریک یا پیروی از سیستم
-                    </p>
-                  </div>
-                  <Select
-                    value={settings.theme}
-                    onValueChange={(v) => updateSetting("theme", v as any)}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">روشن</SelectItem>
-                      <SelectItem value="dark">تاریک</SelectItem>
-                      <SelectItem value="system">پیروی از سیستم</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Label className="text-sm font-semibold">زبان</Label>
-                    <p className="text-xs text-muted-foreground">
-                      زبان رابط کاربری
-                    </p>
-                  </div>
-                  <Select
-                    value={settings.language}
-                    onValueChange={(v) => updateSetting("language", v as any)}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fa">فارسی</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case "notifications":
-        return (
-          <div className="space-y-5">
-            <Card>
-              <CardHeader className="bg-muted/40 border-b px-6 py-4">
-                <CardTitle className="flex items-center gap-2 text-base font-bold">
-                  <Bell className="h-4 w-4 text-primary" />
-                  تنظیمات اعلان‌ها
-                </CardTitle>
-                <CardDescription>
-                  مدیریت نحوه دریافت اعلان‌ها (تغییرات بلافاصله ذخیره می‌شود)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-6 py-5 space-y-4">
-                {/* اعلان ایمیلی */}
-                <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3 bg-muted/30">
-                  <div>
-                    <p className="text-sm font-semibold">اعلان ایمیلی</p>
-                    <p className="text-xs text-muted-foreground">
-                      دریافت اعلان‌ها از طریق ایمیل
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.emailNotifications}
-                    onCheckedChange={async (checked) => {
-                      updateSetting("emailNotifications", checked);
-                      try {
-                        await apiClient.put("/notifications/settings", {
-                          emailNotifications: checked,
-                          smsNotifications: settings.smsNotifications,
-                        });
-                      } catch {
-                        updateSetting("emailNotifications", !checked);
-                        toast.error("خطا در ذخیره تنظیمات");
-                      }
-                    }}
-                    className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-300"
-                  />
-                </div>
-
-                {/* اعلان پیامکی */}
-                <div className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3 bg-muted/30">
-                  <div>
-                    <p className="text-sm font-semibold">اعلان پیامکی</p>
-                    <p className="text-xs text-muted-foreground">
-                      دریافت پیامک برای رویدادهای مهم
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.smsNotifications}
-                    onCheckedChange={async (checked) => {
-                      updateSetting("smsNotifications", checked);
-                      try {
-                        await apiClient.put("/notifications/settings", {
-                          emailNotifications: settings.emailNotifications,
-                          smsNotifications: checked,
-                        });
-                      } catch {
-                        updateSetting("smsNotifications", !checked);
-                        toast.error("خطا در ذخیره تنظیمات");
-                      }
-                    }}
-                    className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-300"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "security":
-        return (
-          <Card>
-            <CardHeader className="bg-muted/40 border-b px-6 py-4">
-              <CardTitle className="flex items-center gap-2 text-base font-bold">
-                <Shield className="h-4 w-4 text-primary" />
-                امنیت حساب
-              </CardTitle>
-              <CardDescription>مدیریت رمز عبور و نشست‌های فعال</CardDescription>
-            </CardHeader>
-            <CardContent className="px-6 py-5">
-              <AccountSecurity />
-            </CardContent>
-          </Card>
-        );
-
-      default:
-        return null;
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("رمز عبور جدید و تکرار آن مطابقت ندارند");
+      return;
     }
+    if (passwordData.newPassword.length < 6) {
+      toast.error("رمز عبور جدید باید حداقل ۶ کاراکتر باشد");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await apiClient.post("/users/profile/change-password", {
+        oldPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      toast.success("رمز عبور با موفقیت تغییر کرد");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "خطا در تغییر رمز عبور");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+    try {
+      await apiClient.delete(`/users/sessions/${sessionId}`);
+      setSessions((prev) => prev.filter((s) => s._id !== sessionId));
+      toast.success("نشست مورد نظر با موفقیت لغو شد");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "خطا در لغو نشست");
+    } finally {
+      setRevokingSessionId(null);
+      setShowRevokeDialog(false);
+    }
+  };
+
+  const handleRevokeAllOtherSessions = async () => {
+    setRevokingAll(true);
+    try {
+      await apiClient.delete("/users/sessions", { data: { allOther: true } });
+      setSessions((prev) => prev.filter((s) => s.isCurrent));
+      toast.success("همه دستگاه‌های دیگر از حساب خارج شدند");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "خطا در لغو نشست‌ها");
+    } finally {
+      setRevokingAll(false);
+    }
+  };
+
+  const openRevokeDialog = (session: Session) => {
+    setSessionToRevoke(session);
+    setShowRevokeDialog(true);
+  };
+
+  const getDeviceIcon = (session: Session) => {
+    const device = session.device?.toLowerCase() || "";
+    if (device.includes("iphone") || device.includes("android"))
+      return <Smartphone className="w-5 h-5" />;
+    if (device.includes("ipad") || device.includes("tablet"))
+      return <Tablet className="w-5 h-5" />;
+    return <Monitor className="w-5 h-5" />;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("fa-IR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="flex items-center justify-center h-64" dir="rtl">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in" dir="rtl">
-      {/* هدر و دکمه‌ها */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">تنظیمات کارشناس</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            مدیریت تنظیمات شخصی و امنیت حساب
-          </p>
+    <div className="space-y-8 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" dir="rtl">
+      {/* هدر شیشه‌ای */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary/15 via-primary/5 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent p-6 sm:p-8 backdrop-blur-sm border border-primary/10 shadow-sm"
+      >
+        <div className="relative flex items-center gap-4 sm:gap-5">
+          <div className="p-3 bg-primary/10 rounded-2xl">
+            <Settings className="w-7 h-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              تنظیمات حساب
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              مدیریت اعلان‌ها، ظاهر و امنیت حساب کاربری
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {isDirty && (
-            <Badge
-              variant="outline"
-              className="gap-1 text-[0.72rem] font-medium bg-amber-50 text-amber-700 border-amber-200 px-2.5 py-1 rounded-full"
-            >
-              <AlertCircle className="h-3 w-3" /> تغییرات ذخیره نشده
-            </Badge>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="gap-1.5"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> بازنشانی
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-1.5 shadow-[0_2px_10px_hsl(var(--primary)_/_0.25)] hover:shadow-[0_4px_16px_hsl(var(--primary)_/_0.35)] hover:brightness-105 transition-all"
-          >
-            <Save className="h-3.5 w-3.5" />{" "}
-            {saving ? "در حال ذخیره..." : "ذخیره تغییرات"}
-          </Button>
-        </div>
-      </div>
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-secondary/10 rounded-full blur-2xl" />
+      </motion.div>
 
-      {/* محتوای اصلی با منوی کناری */}
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Sidebar */}
-        <div className="w-full md:w-[20%] lg:w-[18%]">
-          <div className="sticky top-20 space-y-1.5 bg-background/50 rounded-xl p-2 border border-border/50">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeMenu === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveMenu(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-150 text-right",
-                    "hover:bg-accent hover:text-accent-foreground",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4",
-                      isActive && "text-primary-foreground",
-                    )}
-                  />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </button>
-              );
-            })}
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* نوار تب‌ها */}
+        <div className="lg:w-64 shrink-0">
+          <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+            {tabs.map((tab) => (
+              <motion.button
+                key={tab.id}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-primary text-white shadow-lg shadow-primary/30"
+                    : "bg-card text-muted-foreground hover:bg-primary/10 hover:text-primary border border-border/50"
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                {tab.label}
+              </motion.button>
+            ))}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="w-full md:w-[80%] lg:w-[82%]">
-          <div className="animate-slide-up">{renderContent()}</div>
+        {/* محتوای تب‌ها */}
+        <div className="flex-1 min-w-0">
+          <AnimatePresence mode="wait">
+            {activeTab === "notifications" && (
+              <motion.div
+                key="notifications"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
+                  <CardHeader className="pb-4 px-6 pt-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Bell className="w-5 h-5 text-primary" />
+                      </div>
+                      تنظیمات اعلان‌ها
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      نحوه و زمان دریافت اطلاع‌رسانی‌ها را شخصی‌سازی کنید
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-8 px-6 pb-6">
+                    {/* ---- راه‌های ارتباطی ---- */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 bg-primary/10 rounded-lg">
+                          <Mail className="w-4 h-4 text-primary" />
+                        </div>
+                        <h3 className="font-bold text-sm">راه‌های ارتباطی</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* اعلان ایمیلی */}
+                        <div className="p-5 rounded-xl bg-muted/20 border border-border/30 hover:border-primary/30 transition-all">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <Mail className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <Label className="font-semibold">اعلان ایمیلی</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  دریافت اعلان‌ها از طریق ایمیل
+                                </p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={settings.emailNotifications}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, emailNotifications: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* اعلان پیامکی */}
+                        <div className="p-5 rounded-xl bg-muted/20 border border-border/30 hover:border-primary/30 transition-all">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <Smartphone className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <Label className="font-semibold">اعلان پیامکی</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  دریافت پیامک برای رویدادهای مهم
+                                </p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={settings.smsNotifications}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, smsNotifications: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* ---- فعالیت آگهی ---- */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 bg-primary/10 rounded-lg">
+                          <Megaphone className="w-4 h-4 text-primary" />
+                        </div>
+                        <h3 className="font-bold text-sm">فعالیت آگهی‌ها</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* آگهی‌های جدید */}
+                        <div className="p-5 rounded-xl bg-muted/20 border border-border/30 hover:border-primary/30 transition-all">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <Megaphone className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <Label className="font-semibold">آگهی‌های جدید</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  هنگام انتشار آگهی جدید در دسته‌های منتخب
+                                </p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={settings.newAdAlerts}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, newAdAlerts: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* تغییر وضعیت آگهی */}
+                        <div className="p-5 rounded-xl bg-muted/20 border border-border/30 hover:border-primary/30 transition-all">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <AlertCircle className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <Label className="font-semibold">وضعیت آگهی</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  تأیید، رد یا تغییر وضعیت آگهی‌های شما
+                                </p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={settings.adStatusAlerts}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, adStatusAlerts: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* پیام‌های جدید */}
+                        <div className="p-5 rounded-xl bg-muted/20 border border-border/30 hover:border-primary/30 transition-all md:col-span-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <MessageSquare className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <Label className="font-semibold">پیام‌های جدید</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  اعلان پیام‌های دریافتی در چت داخلی
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                              <select
+                                className="text-xs bg-background border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                value={settings.messageAlertSchedule}
+                                onChange={(e) =>
+                                  setSettings({
+                                    ...settings,
+                                    messageAlertSchedule: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="always">همیشه</option>
+                                <option value="daytime">فقط در روز (۸ صبح تا ۱۰ شب)</option>
+                                <option value="working_hours">ساعات کاری (۹ تا ۱۸)</option>
+                              </select>
+                              <Switch
+                                checked={settings.messageAlerts}
+                                onCheckedChange={(checked) =>
+                                  setSettings({ ...settings, messageAlerts: checked })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={handleSaveNotifications}
+                        disabled={saving}
+                        className="gap-2 min-w-[140px] rounded-xl"
+                      >
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        ذخیره تنظیمات
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === "appearance" && (
+              <motion.div
+                key="appearance"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
+                  <CardHeader className="pb-4 px-6 pt-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Palette className="w-5 h-5 text-primary" />
+                      </div>
+                      تنظیمات ظاهر
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6 px-6 pb-6">
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Moon className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <Label className="font-semibold">حالت تاریک</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            تغییر پوسته به رنگ‌های تیره
+                          </p>
+                        </div>
+                      </div>
+                      <Switch checked={appearance.darkMode} onCheckedChange={toggleDarkMode} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-muted/30 opacity-60">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Languages className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <Label className="font-semibold">جهت راست‌چین</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            فعال بودن پیش‌فرض (فارسی)
+                          </p>
+                        </div>
+                      </div>
+                      <Switch checked={appearance.rtl} disabled />
+                    </div>
+
+                    <Separator />
+                    <div className="flex justify-end">
+                      <Button type="button" onClick={handleSaveAppearance} className="gap-2 min-w-[140px] rounded-xl">
+                        <Save className="w-4 h-4" />
+                        ذخیره تنظیمات
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {activeTab === "security" && (
+              <motion.div
+                key="security"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
+                  <CardHeader className="pb-4 px-6 pt-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Shield className="w-5 h-5 text-primary" />
+                      </div>
+                      تنظیمات امنیتی
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-8 px-6 pb-6">
+                    {/* ========== تغییر رمز عبور ========== */}
+                    <div className="space-y-5">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Lock className="w-4 h-4 text-primary" />
+                        تغییر رمز عبور
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="رمز عبور فعلی"
+                            value={passwordData.currentPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                            }
+                            className="pl-10 rounded-xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="رمز عبور جدید"
+                            value={passwordData.newPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, newPassword: e.target.value })
+                            }
+                            className="pl-10 rounded-xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="تکرار رمز عبور جدید"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                            }
+                            className="pl-10 rounded-xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 rounded-xl"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? "مخفی کردن رمز" : "نمایش رمزها"}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => setShowPasswordConfirmDialog(true)}
+                          className="gap-2 rounded-xl"
+                        >
+                          <Save className="w-4 h-4" />
+                          تغییر رمز عبور
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* نشست‌های فعال */}
+                    <div className="space-y-4">
+                      <ActiveSessions />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ========== دیالوگ تأیید تغییر رمز عبور ========== */}
+                <Dialog open={showPasswordConfirmDialog} onOpenChange={setShowPasswordConfirmDialog}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Lock className="w-5 h-5 text-primary" />
+                        تأیید تغییر رمز عبور
+                      </DialogTitle>
+                      <DialogDescription>
+                        آیا مطمئن هستید می‌خواهید رمز عبور خود را تغییر دهید؟
+                        <br />
+                        پس از تغییر رمز، برای ورود مجدد باید از رمز جدید استفاده کنید.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <Button variant="outline" onClick={() => setShowPasswordConfirmDialog(false)} className="rounded-xl">
+                        انصراف
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          handleChangePassword();
+                          setShowPasswordConfirmDialog(false);
+                        }}
+                        className="gap-2 rounded-xl"
+                      >
+                        <Save className="w-4 h-4" />
+                        بله، تغییر بده
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* ========== مودال موفقیت تغییر رمز ========== */}
+                <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-green-600">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-6 h-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12l2 2l4-4m6 2a9 9 0 11-18 0a9 9 0 0118 0z"
+                          />
+                        </svg>
+                        رمز عبور با موفقیت تغییر کرد
+                      </DialogTitle>
+                      <DialogDescription className="pt-2">
+                        رمز عبور جدید شما با موفقیت ذخیره شد. از این پس برای ورود از رمز جدید استفاده کنید.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <Button type="button" onClick={() => setShowSuccessModal(false)} className="gap-2 rounded-xl">
+                        متوجه شدم
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* دیالوگ لغو نشست */}
+                <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <LogOut className="w-5 h-5 text-destructive" />
+                        لغو نشست
+                      </DialogTitle>
+                      <DialogDescription>
+                        آیا مطمئن هستید می‌خواهید این دستگاه از حساب خارج شود؟
+                        {sessionToRevoke && (
+                          <span className="block mt-1 text-foreground font-medium">
+                            {sessionToRevoke.device} - {sessionToRevoke.browser}
+                          </span>
+                        )}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                      <Button variant="outline" onClick={() => setShowRevokeDialog(false)} className="rounded-xl">
+                        انصراف
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => sessionToRevoke && handleRevokeSession(sessionToRevoke._id)}
+                        disabled={revokingSessionId === sessionToRevoke?._id}
+                        className="rounded-xl"
+                      >
+                        {revokingSessionId === sessionToRevoke?._id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LogOut className="w-4 h-4" />
+                        )}
+                        خروج دستگاه
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

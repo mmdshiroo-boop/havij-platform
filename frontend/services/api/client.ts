@@ -7,7 +7,7 @@ console.log("🔧 API Client initialized with baseURL:", API_URL);
 const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 30000,
-  withCredentials: true, // ← ارسال کوکی‌ها (برای احراز هویت مبتنی بر session)
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -45,11 +45,26 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const isAuthRoute =
+      error.config?.url?.includes("/auth/login") ||
+      error.config?.url?.includes("/auth/register") ||
+      error.config?.url?.includes("/auth/send-code") ||
+      error.config?.url?.includes("/auth/verify-code") ||
+      error.config?.url?.includes("/auth/forgot-password") ||
+      error.config?.url?.includes("/auth/reset-password");
+
     const isAuthMeRoute = error.config?.url?.includes("/auth/me");
+    const isOfflineRoute = error.config?.url?.includes("/locations/me/offline");
     const isUnauthorized = error.response?.status === 401;
 
-    // 🛑 فقط برای session expired ریدایرکت کن
-    if (isUnauthorized && typeof window !== "undefined" && !isAuthMeRoute) {
+    // 🛑 برای session expired فقط در مسیرهای غیر auth/offline ریدایرکت کن
+    if (
+      isUnauthorized &&
+      typeof window !== "undefined" &&
+      !isAuthMeRoute &&
+      !isOfflineRoute &&
+      !isAuthRoute
+    ) {
       const message = error.response?.data?.message;
 
       if (message === "نشست شما منقضی شده است. لطفاً دوباره وارد شوید.") {
@@ -65,19 +80,18 @@ apiClient.interceptors.response.use(
       console.warn("⚠️ Message:", message);
     }
 
-    // لاگ خطاها
-    if (error.response) {
+    // لاگ خطاها (حذف لاگ برای مسیرهای auth و offline که خطا در آن‌ها طبیعی است)
+    if (error.response && !isOfflineRoute && !isAuthRoute) {
       console.error(`❌ HTTP ${error.response.status} ${error.config?.url}`);
       console.error("❌ Response data:", error.response.data);
-      // برای خطاهای ۵۰۰، نمایش یک پیام واضح‌تر
       if (error.response.status === 500) {
         console.error(
           "💥 سرور دچار خطای داخلی شده است. لطفاً لاگ سرور را بررسی کنید.",
         );
       }
-    } else if (error.request) {
+    } else if (error.request && !isOfflineRoute && !isAuthRoute) {
       console.error("❌ No response received:", error.config?.url);
-    } else {
+    } else if (!isOfflineRoute && !isAuthRoute) {
       console.error("❌ Request error:", error.message);
     }
 

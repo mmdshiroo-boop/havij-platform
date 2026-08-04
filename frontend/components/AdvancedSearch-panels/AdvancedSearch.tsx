@@ -30,6 +30,7 @@ import {
   Loader2,
 } from "lucide-react";
 import apiClient from "@/services/api/client";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 import {
   printSingleAd,
   printBulkAds,
@@ -38,6 +39,8 @@ import {
   mapBackendAdToPrintAd,
 } from "@/lib/printAds";
 import type { PrintAd } from "@/lib/printAds";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 /* ═══════════════════════════════════════════════════════════════════
    TYPES
@@ -73,15 +76,28 @@ interface PaginationInfo {
 
 const STATUS_MAP: Record<
   string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-  }
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string }
 > = {
-  active: { label: "فعال", variant: "default" },
-  pending: { label: "در انتظار تایید", variant: "outline" },
-  sold: { label: "فروخته‌شده", variant: "secondary" },
-  expired: { label: "منقضی", variant: "destructive" },
+  active: {
+    label: "فعال",
+    variant: "default",
+    className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  },
+  pending: {
+    label: "در انتظار تایید",
+    variant: "outline",
+    className: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  },
+  sold: {
+    label: "فروخته‌شده",
+    variant: "secondary",
+    className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  },
+  expired: {
+    label: "منقضی",
+    variant: "destructive",
+    className: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+  },
 };
 
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
@@ -179,8 +195,6 @@ export default function AdvancedSearch() {
   const [printing, setPrinting] = useState(false);
   const [printProgress, setPrintProgress] = useState("");
 
-  const API_BASE = "http://localhost:5001";
-
   /* ─── Selection ─── */
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -228,7 +242,7 @@ export default function AdvancedSearch() {
         const fullAd = await fetchFullAd(ad._id);
         const printAd = fullAd || mapBackendAdToPrintAd(ad);
         await printSingleAd(printAd, {
-          baseUrl: API_BASE,
+          baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
           onProgress: setPrintProgress,
         });
         toast.success("PDF آگهی با موفقیت دانلود شد");
@@ -251,7 +265,9 @@ export default function AdvancedSearch() {
       try {
         const fullAd = await fetchFullAd(ad._id);
         const printAd = fullAd || mapBackendAdToPrintAd(ad);
-        printSingleAdBrowser(printAd, { baseUrl: API_BASE });
+        printSingleAdBrowser(printAd, {
+          baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
+        });
       } catch (e) {
         console.error("[Print] handlePrintSingleBrowser error:", e);
         toast.error("خطا در چاپ.");
@@ -279,7 +295,7 @@ export default function AdvancedSearch() {
           : selected.map((a) => mapBackendAdToPrintAd(a));
 
       await printBulkAds(valid, {
-        baseUrl: API_BASE,
+        baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
         onProgress: setPrintProgress,
       });
       toast.success(`PDF ${toFa(valid.length)} آگهی با موفقیت دانلود شد`);
@@ -307,7 +323,9 @@ export default function AdvancedSearch() {
           ? (fullAds.filter(Boolean) as PrintAd[])
           : selected.map((a) => mapBackendAdToPrintAd(a));
 
-      printBulkAdsBrowser(valid, { baseUrl: API_BASE });
+      printBulkAdsBrowser(valid, {
+        baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
+      });
     } catch (e) {
       console.error("[Print] handlePrintSelectedBrowser error:", e);
       toast.error("خطا در چاپ.");
@@ -330,7 +348,7 @@ export default function AdvancedSearch() {
           : results.map((a) => mapBackendAdToPrintAd(a));
 
       await printBulkAds(valid, {
-        baseUrl: API_BASE,
+        baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
         onProgress: setPrintProgress,
       });
       toast.success(`PDF ${toFa(valid.length)} آگهی با موفقیت دانلود شد`);
@@ -355,7 +373,9 @@ export default function AdvancedSearch() {
           ? (fullAds.filter(Boolean) as PrintAd[])
           : results.map((a) => mapBackendAdToPrintAd(a));
 
-      printBulkAdsBrowser(valid, { baseUrl: API_BASE });
+      printBulkAdsBrowser(valid, {
+        baseUrl: process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "",
+      });
     } catch (e) {
       console.error("[Print] handlePrintAllBrowser error:", e);
       toast.error("خطا در چاپ.");
@@ -382,6 +402,7 @@ export default function AdvancedSearch() {
     });
     setPage(1);
   }, []);
+
   const clearAll = useCallback(() => {
     setFilters({});
     setPage(1);
@@ -469,7 +490,11 @@ export default function AdvancedSearch() {
       )}
 
       {/* ─── کارت فیلترها ─── */}
-      <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden"
+      >
         <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -506,7 +531,7 @@ export default function AdvancedSearch() {
               </Label>
               <Input
                 placeholder="جستجو در عنوان..."
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.q || ""}
                 onChange={(e) => updateFilter("q", e.target.value)}
               />
@@ -514,12 +539,10 @@ export default function AdvancedSearch() {
 
             {/* استان */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                استان
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">استان</Label>
               <Input
                 placeholder="مثلاً تهران"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.province || ""}
                 onChange={(e) => updateFilter("province", e.target.value)}
               />
@@ -527,12 +550,10 @@ export default function AdvancedSearch() {
 
             {/* شهر */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                شهر
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">شهر</Label>
               <Input
                 placeholder="مثلاً مشهد"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.city || ""}
                 onChange={(e) => updateFilter("city", e.target.value)}
               />
@@ -540,12 +561,10 @@ export default function AdvancedSearch() {
 
             {/* محله */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                منطقه / محله
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">منطقه / محله</Label>
               <Input
                 placeholder="مثلاً سعادت‌آباد"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.district || ""}
                 onChange={(e) => updateFilter("district", e.target.value)}
               />
@@ -553,22 +572,15 @@ export default function AdvancedSearch() {
 
             {/* نوع ملک */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                نوع ملک
-              </Label>
-              <Select
-                value={filters.propertyType || "all"}
-                onValueChange={(v) => updateFilter("propertyType", v)}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">نوع ملک</Label>
+              <Select value={filters.propertyType || "all"} onValueChange={(v) => updateFilter("propertyType", v)}>
+                <SelectTrigger className="h-10 rounded-xl text-sm bg-muted/40 border-border/60">
                   <SelectValue placeholder="همه" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه</SelectItem>
                   {Object.entries(PROPERTY_LABELS).map(([val, lbl]) => (
-                    <SelectItem key={val} value={val}>
-                      {lbl}
-                    </SelectItem>
+                    <SelectItem key={val} value={val}>{lbl}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -576,22 +588,15 @@ export default function AdvancedSearch() {
 
             {/* نوع معامله */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                نوع معامله
-              </Label>
-              <Select
-                value={filters.adType || "all"}
-                onValueChange={(v) => updateFilter("adType", v)}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">نوع معامله</Label>
+              <Select value={filters.adType || "all"} onValueChange={(v) => updateFilter("adType", v)}>
+                <SelectTrigger className="h-10 rounded-xl text-sm bg-muted/40 border-border/60">
                   <SelectValue placeholder="همه" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه</SelectItem>
                   {Object.entries(AD_TYPE_LABELS).map(([val, lbl]) => (
-                    <SelectItem key={val} value={val}>
-                      {lbl}
-                    </SelectItem>
+                    <SelectItem key={val} value={val}>{lbl}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -599,97 +604,62 @@ export default function AdvancedSearch() {
 
             {/* حداقل قیمت */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                حداقل قیمت (تومان)
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">حداقل قیمت (تومان)</Label>
               <Input
                 type="number"
                 placeholder="۰"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.minPrice || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "minPrice",
-                    e.target.value ? Number(e.target.value) : undefined,
-                  )
-                }
+                onChange={(e) => updateFilter("minPrice", e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
 
             {/* حداکثر قیمت */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                حداکثر قیمت (تومان)
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">حداکثر قیمت (تومان)</Label>
               <Input
                 type="number"
                 placeholder="۰"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.maxPrice || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "maxPrice",
-                    e.target.value ? Number(e.target.value) : undefined,
-                  )
-                }
+                onChange={(e) => updateFilter("maxPrice", e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
 
             {/* حداقل متراژ */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                حداقل متراژ (م²)
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">حداقل متراژ (م²)</Label>
               <Input
                 type="number"
                 placeholder="۰"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.minArea || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "minArea",
-                    e.target.value ? Number(e.target.value) : undefined,
-                  )
-                }
+                onChange={(e) => updateFilter("minArea", e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
 
             {/* حداکثر متراژ */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                حداکثر متراژ (م²)
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">حداکثر متراژ (م²)</Label>
               <Input
                 type="number"
                 placeholder="۰"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.maxArea || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "maxArea",
-                    e.target.value ? Number(e.target.value) : undefined,
-                  )
-                }
+                onChange={(e) => updateFilter("maxArea", e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
 
             {/* تعداد اتاق */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                تعداد اتاق
-              </Label>
-              <Select
-                value={filters.rooms || "any"}
-                onValueChange={(v) => updateFilter("rooms", v)}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">تعداد اتاق</Label>
+              <Select value={filters.rooms || "any"} onValueChange={(v) => updateFilter("rooms", v)}>
+                <SelectTrigger className="h-10 rounded-xl text-sm bg-muted/40 border-border/60">
                   <SelectValue placeholder="همه" />
                 </SelectTrigger>
                 <SelectContent>
                   {ROOM_OPTIONS.map((val) => (
-                    <SelectItem key={val} value={val}>
-                      {ROOM_LABELS[val]}
-                    </SelectItem>
+                    <SelectItem key={val} value={val}>{ROOM_LABELS[val]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -697,33 +667,21 @@ export default function AdvancedSearch() {
 
             {/* حداقل طبقه */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                حداقل طبقه
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">حداقل طبقه</Label>
               <Input
                 type="number"
                 placeholder="۰"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.minFloor || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "minFloor",
-                    e.target.value ? Number(e.target.value) : undefined,
-                  )
-                }
+                onChange={(e) => updateFilter("minFloor", e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
 
             {/* وضعیت آگهی */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                وضعیت آگهی
-              </Label>
-              <Select
-                value={filters.status || "all"}
-                onValueChange={(v) => updateFilter("status", v)}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">وضعیت آگهی</Label>
+              <Select value={filters.status || "all"} onValueChange={(v) => updateFilter("status", v)}>
+                <SelectTrigger className="h-10 rounded-xl text-sm bg-muted/40 border-border/60">
                   <SelectValue placeholder="همه" />
                 </SelectTrigger>
                 <SelectContent>
@@ -738,12 +696,10 @@ export default function AdvancedSearch() {
 
             {/* از تاریخ */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                از تاریخ
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">از تاریخ</Label>
               <Input
                 type="date"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.startDate || ""}
                 onChange={(e) => updateFilter("startDate", e.target.value)}
               />
@@ -751,12 +707,10 @@ export default function AdvancedSearch() {
 
             {/* تا تاریخ */}
             <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                تا تاریخ
-              </Label>
+              <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">تا تاریخ</Label>
               <Input
                 type="date"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-xl text-sm bg-muted/40 border-border/60 focus:ring-primary"
                 value={filters.endDate || ""}
                 onChange={(e) => updateFilter("endDate", e.target.value)}
               />
@@ -787,13 +741,17 @@ export default function AdvancedSearch() {
             </span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ─── نتایج ─── */}
       {loading ? (
         <TableSkeleton />
       ) : searched && results.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-16 space-y-4"
+        >
           <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
             <FileX className="w-7 h-7 text-muted-foreground/40" />
           </div>
@@ -808,15 +766,19 @@ export default function AdvancedSearch() {
           <Button
             variant="outline"
             size="sm"
-            className="mt-2 gap-2 rounded-xl text-xs"
+            className="mt-2 gap-2 rounded-xl text-xs border-border/60 hover:bg-muted"
             onClick={clearAll}
           >
             <RotateCcw className="w-3.5 h-3.5" />
             پاک‌سازی فیلترها
           </Button>
-        </div>
+        </motion.div>
       ) : results.length > 0 ? (
-        <div className="bg-card rounded-2xl border border-border/50 shadow-sm overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden"
+        >
           {/* هدر نتایج + دکمه‌های چاپ */}
           <div className="px-5 py-3 border-b border-border/40">
             <div className="flex items-center justify-between mb-2">
@@ -895,9 +857,7 @@ export default function AdvancedSearch() {
                     className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/20 disabled:opacity-50"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    {printing
-                      ? "در حال آماده‌سازی..."
-                      : "دانلود PDF انتخاب‌شده‌ها"}
+                    {printing ? "در حال آماده‌سازی..." : "دانلود PDF انتخاب‌شده‌ها"}
                   </button>
                 </div>
                 <button
@@ -928,46 +888,23 @@ export default function AdvancedSearch() {
                   <th className="w-10 px-3 py-3">
                     <input
                       type="checkbox"
-                      checked={
-                        selectedIds.size === results.length &&
-                        results.length > 0
-                      }
+                      checked={selectedIds.size === results.length && results.length > 0}
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded accent-primary cursor-pointer"
                     />
                   </th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">
-                    عنوان آگهی
-                  </th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">
-                    قیمت
-                  </th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">
-                    شهر / محله
-                  </th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">
-                    نوع ملک
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-muted-foreground">
-                    بازدید
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-muted-foreground">
-                    وضعیت
-                  </th>
-                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">
-                    تاریخ
-                  </th>
-                  <th className="w-28 text-center px-3 py-3 text-xs font-bold text-muted-foreground">
-                    عملیات
-                  </th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">آگهی</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">قیمت</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">مکان</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-muted-foreground">بازدید</th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-muted-foreground">وضعیت</th>
+                  <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground">تاریخ</th>
+                  <th className="w-28 text-center px-3 py-3 text-xs font-bold text-muted-foreground">عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((ad) => {
-                  const st = STATUS_MAP[ad.status] || {
-                    label: ad.status,
-                    variant: "secondary" as const,
-                  };
+                  const st = STATUS_MAP[ad.status] || { label: ad.status, variant: "secondary" as const, className: "" };
                   return (
                     <tr
                       key={ad._id}
@@ -977,69 +914,51 @@ export default function AdvancedSearch() {
                         <input
                           type="checkbox"
                           checked={selectedIds.has(ad._id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            toggleSelect(ad._id);
-                          }}
+                          onChange={(e) => { e.stopPropagation(); toggleSelect(ad._id); }}
                           className="w-4 h-4 rounded accent-primary cursor-pointer"
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
-                          onClick={() => router.push(`/ad/${ad._id}`)}
-                        >
-                          {ad.title}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-bold text-xs">
-                          {ad.priceString || formatPrice(ad.price)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          <span className="line-clamp-1">
-                            {ad.district
-                              ? `${ad.city}، ${ad.district}`
-                              : ad.city}
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getImageUrl(ad.images?.[0])}
+                            alt={ad.title}
+                            className="w-10 h-10 rounded-lg object-cover border border-border/30 shrink-0"
+                            onError={(e) => { (e.target as HTMLImageElement).src = "/images/user.webp"; }}
+                          />
+                          <span
+                            className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
+                            onClick={() => router.push(`/ad/${ad._id}`)}
+                          >
+                            {ad.title}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">
-                          {PROPERTY_LABELS[ad.propertyType || ""] ||
-                            ad.propertyType ||
-                            "—"}
-                        </span>
+                      <td className="px-4 py-3 font-bold text-xs">
+                        {ad.priceString || formatPrice(ad.price)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {ad.district ? `${ad.city}، ${ad.district}` : ad.city}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs text-muted-foreground">
+                        <Eye className="w-3 h-3 inline ml-1" />
+                        {toFa(ad.views)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Eye className="w-3 h-3" />
-                          {toFa(ad.views)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          variant={st.variant}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                        >
+                        <Badge className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border", st.className)}>
                           {st.label}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(ad.createdAt).toLocaleDateString("fa-IR")}
-                        </span>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {new Date(ad.createdAt).toLocaleDateString("fa-IR")}
                       </td>
                       <td className="w-28 px-3 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePrintSingle(ad);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handlePrintSingle(ad); }}
                             disabled={printing}
                             className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
                             title="دانلود PDF"
@@ -1048,10 +967,7 @@ export default function AdvancedSearch() {
                             PDF
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePrintSingleBrowser(ad);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handlePrintSingleBrowser(ad); }}
                             disabled={printing}
                             className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
                             title="چاپ با مرورگر"
@@ -1070,76 +986,65 @@ export default function AdvancedSearch() {
           {/* کارت‌ها — Mobile */}
           <div className="md:hidden divide-y divide-border/30">
             {results.map((ad) => {
-              const st = STATUS_MAP[ad.status] || {
-                label: ad.status,
-                variant: "secondary" as const,
-              };
+              const st = STATUS_MAP[ad.status] || { label: ad.status, variant: "secondary" as const, className: "" };
               return (
                 <div
                   key={ad._id}
                   className={`p-4 hover:bg-muted/20 transition-colors cursor-pointer active:bg-muted/30 ${selectedIds.has(ad._id) ? "bg-primary/3" : ""}`}
                   onClick={() => router.push(`/ad/${ad._id}`)}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(ad._id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          toggleSelect(ad._id);
-                        }}
-                        className="w-4 h-4 rounded accent-primary cursor-pointer shrink-0"
-                      />
-                      <h3 className="font-bold text-sm text-foreground line-clamp-1">
-                        {ad.title}
-                      </h3>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(ad._id)}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(ad._id); }}
+                      className="w-4 h-4 mt-1 rounded accent-primary cursor-pointer shrink-0"
+                    />
+                    <img
+                      src={getImageUrl(ad.images?.[0])}
+                      alt={ad.title}
+                      className="w-16 h-16 rounded-xl object-cover border border-border/30 shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).src = "/images/user.webp"; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-sm text-foreground line-clamp-1">{ad.title}</h3>
+                        <Badge className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0", st.className)}>
+                          {st.label}
+                        </Badge>
+                      </div>
+                      <p className="font-extrabold text-primary text-sm mt-1">
+                        {ad.priceString || formatPrice(ad.price)}
+                      </p>
+                      <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {ad.district ? `${ad.city}، ${ad.district}` : ad.city}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {toFa(ad.views)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 justify-end">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePrintSingle(ad); }}
+                          disabled={printing}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
+                        >
+                          <Download className="w-3 h-3" />
+                          PDF
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePrintSingleBrowser(ad); }}
+                          disabled={printing}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
+                        >
+                          <Printer className="w-3 h-3" />
+                          چاپ
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePrintSingle(ad);
-                        }}
-                        disabled={printing}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
-                      >
-                        <Download className="w-3 h-3" />
-                        PDF
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePrintSingleBrowser(ad);
-                        }}
-                        disabled={printing}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-border/60 text-[11px] font-semibold text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors disabled:opacity-50"
-                      >
-                        <Printer className="w-3 h-3" />
-                      </button>
-                      <Badge
-                        variant={st.variant}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                      >
-                        {st.label}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {ad.district ? `${ad.city}، ${ad.district}` : ad.city}
-                    </div>
-                    <span className="font-bold text-foreground text-xs">
-                      {ad.priceString || formatPrice(ad.price)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1.5 text-[11px] text-muted-foreground">
-                    <span>{PROPERTY_LABELS[ad.propertyType || ""] || "—"}</span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {toFa(ad.views)}
-                    </span>
                   </div>
                 </div>
               );
@@ -1171,10 +1076,7 @@ export default function AdvancedSearch() {
                 }, [])
                 .map((n, i) =>
                   n === "..." ? (
-                    <span
-                      key={`e${i}`}
-                      className="px-1 text-xs text-muted-foreground"
-                    >
+                    <span key={`e${i}`} className="px-1 text-xs text-muted-foreground">
                       …
                     </span>
                   ) : (
@@ -1201,7 +1103,7 @@ export default function AdvancedSearch() {
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       ) : null}
 
       {/* حالت اولیه */}

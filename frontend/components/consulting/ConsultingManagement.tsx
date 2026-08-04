@@ -1,3 +1,5 @@
+// ConsultingManagement.tsx (نسخهٔ نهایی — کارشناس همه را می‌بیند، مشاور فقط خودش)
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -10,21 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   RefreshCw,
   MessageSquare,
   CheckCircle,
-  XCircle,
   Clock,
   Eye,
   Filter,
@@ -57,22 +50,22 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   pending: {
     label: "در انتظار",
     className:
-      "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300",
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   },
   approved: {
     label: "تأیید شده",
     className:
-      "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300",
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   },
   rejected: {
     label: "رد شده",
     className:
-      "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/20 dark:text-red-300",
+      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
   },
   completed: {
     label: "تکمیل شده",
     className:
-      "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-500/20 dark:text-blue-300",
+      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
   },
 };
 
@@ -99,17 +92,25 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
   const [newStatus, setNewStatus] = useState<string>("");
   const [updating, setUpdating] = useState(false);
 
+  // ─── دریافت داده‌ها بر اساس نقش ───
   const fetchRequests = useCallback(
     async (showRefresh = false) => {
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
       try {
-        const response = await consultingApi.getAll(
-          statusFilter !== "all" ? statusFilter : undefined,
-          "",
-          1,
-        );
-        setRequests(response.data || []);
+        if (role === "expert") {
+          // کارشناس تمام درخواست‌های کل سایت را می‌بیند
+          const response = await consultingApi.getAll(
+            statusFilter !== "all" ? statusFilter : undefined,
+          );
+          setRequests(Array.isArray(response.data) ? response.data : []);
+        } else {
+          // مشاور فقط درخواست‌های خودش را می‌بیند
+          const data = await consultingApi.getMyRequests(
+            statusFilter !== "all" ? statusFilter : undefined,
+          );
+          setRequests(Array.isArray(data) ? data : []);
+        }
       } catch (error: any) {
         toast.error(
           error.response?.data?.message || "خطا در دریافت درخواست‌ها",
@@ -119,7 +120,7 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
         setRefreshing(false);
       }
     },
-    [statusFilter],
+    [statusFilter, role],
   );
 
   useEffect(() => {
@@ -142,37 +143,38 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
 
   const formatDate = (date: string) => new Date(date).toLocaleString("fa-IR");
 
-  const roleTitle = role === "agent" ? "آژانس" : "کارشناس";
-
   return (
-    <div className="space-y-6 p-4 md:p-6" dir="rtl">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-primary/15 via-primary/5 to-transparent p-6 border border-primary/10 shadow-sm">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl ring-1 ring-primary/20">
-              <MessageSquare className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-                مدیریت درخواست‌های مشاوره
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                مدیریت درخواست‌های مشاوره‌ای که توسط کاربران ثبت شده است
-              </p>
-            </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+            <MessageSquare className="w-6 h-6" />
           </div>
-          <Badge className="bg-primary text-white px-4 py-2 rounded-full text-xs font-bold gap-1.5 shadow-md shadow-primary/20">
-            {roleTitle}
-          </Badge>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">
+              {role === "expert"
+                ? "مدیریت تمام درخواست‌های مشاوره"
+                : "درخواست‌های مشاورهٔ من"}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {role === "expert"
+                ? "شما به تمام درخواست‌های ثبت‌شده در سامانه دسترسی دارید"
+                : "فقط درخواست‌هایی که به شما مربوط می‌شوند"}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center gap-4">
+        <Card className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-xl">
+          <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
               <MessageSquare className="w-5 h-5" />
             </div>
@@ -184,9 +186,9 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-2.5 bg-amber-100/80 dark:bg-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400">
+        <Card className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-400">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -199,9 +201,9 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-2.5 bg-emerald-100/80 dark:bg-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400">
+        <Card className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="w-5 h-5" />
             </div>
             <div>
@@ -214,9 +216,9 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-2.5 bg-blue-100/80 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400">
+        <Card className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400">
               <CheckCircle className="w-5 h-5" />
             </div>
             <div>
@@ -236,7 +238,7 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
         <div className="flex items-center gap-3">
           <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] rounded-xl h-11 bg-background border-border/60 focus:border-primary/40 focus:ring-primary/30">
+            <SelectTrigger className="w-[180px] rounded-xl h-10 bg-muted/40 border-border/60 focus:ring-primary">
               <SelectValue placeholder="همه وضعیت‌ها" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -253,7 +255,7 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
           size="sm"
           onClick={() => fetchRequests(true)}
           disabled={refreshing}
-          className="gap-2 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all"
+          className="gap-2 rounded-xl border-border/60 hover:bg-muted transition-all"
         >
           <RefreshCw
             className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
@@ -262,104 +264,60 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
         </Button>
       </div>
 
-      {/* Table */}
-      <Card className="border-border/50 shadow-sm rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 border-b border-border">
-                <TableHead className="text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  تاریخ
-                </TableHead>
-                <TableHead className="text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  نام و نام خانوادگی
-                </TableHead>
-                <TableHead className="text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  شماره تماس
-                </TableHead>
-                <TableHead className="text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  موضوع
-                </TableHead>
-                <TableHead className="text-right text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  وضعیت
-                </TableHead>
-                <TableHead className="text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  عملیات
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      {/* Table (Desktop) & Card List (Mobile) */}
+      <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
+        <div className="overflow-x-auto hidden sm:block">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-muted/30 border-b border-border/40">
+                <th className="text-right text-xs font-bold text-muted-foreground p-4">تاریخ</th>
+                <th className="text-right text-xs font-bold text-muted-foreground p-4">نام و نام خانوادگی</th>
+                <th className="text-right text-xs font-bold text-muted-foreground p-4">شماره تماس</th>
+                <th className="text-right text-xs font-bold text-muted-foreground p-4">موضوع</th>
+                <th className="text-right text-xs font-bold text-muted-foreground p-4">وضعیت</th>
+                <th className="text-center text-xs font-bold text-muted-foreground p-4">عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24 rounded-lg" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-32 rounded-lg" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-28 rounded-lg" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-40 rounded-lg" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20 rounded-lg" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-8 w-20 rounded-lg" />
-                    </TableCell>
-                  </TableRow>
+                  <tr key={i} className="border-b border-border/20">
+                    <td className="p-4"><Skeleton className="h-5 w-24" /></td>
+                    <td className="p-4"><Skeleton className="h-5 w-32" /></td>
+                    <td className="p-4"><Skeleton className="h-5 w-28" /></td>
+                    <td className="p-4"><Skeleton className="h-5 w-40" /></td>
+                    <td className="p-4"><Skeleton className="h-5 w-20" /></td>
+                    <td className="p-4"><Skeleton className="h-8 w-20" /></td>
+                  </tr>
                 ))
               ) : requests.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-12 text-muted-foreground"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <MessageSquare className="w-10 h-10 text-muted-foreground/30" />
-                      <p className="font-medium">
-                        هیچ درخواست مشاوره‌ای یافت نشد
-                      </p>
-                      <p className="text-xs">
-                        با تغییر فیلترها ممکن است نتیجه‌ای پیدا شود
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="font-medium">
+                      {role === "expert"
+                        ? "هیچ درخواست مشاوره‌ای در سامانه ثبت نشده است"
+                        : "هیچ درخواست مشاوره‌ای برای شما ثبت نشده است"}
+                    </p>
+                  </td>
+                </tr>
               ) : (
                 requests.map((req) => {
-                  const statusConfig =
-                    STATUS_BADGE[req.status] || STATUS_BADGE.pending;
+                  const statusConfig = STATUS_BADGE[req.status] || STATUS_BADGE.pending;
                   return (
-                    <motion.tr
-                      key={req._id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="border-b border-border/50 hover:bg-primary/5 transition-colors group"
-                    >
-                      <TableCell className="text-sm whitespace-nowrap">
-                        {formatDate(req.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        {req.firstName} {req.lastName}
-                      </TableCell>
-                      <TableCell className="text-sm">{req.phone}</TableCell>
-                      <TableCell className="text-sm">{req.subject}</TableCell>
-                      <TableCell className="text-sm">
-                        <Badge
-                          className={`text-xs border ${statusConfig.className}`}
-                        >
+                    <tr key={req._id} className="border-b border-border/20 hover:bg-muted/30 transition-colors">
+                      <td className="text-sm whitespace-nowrap p-4">{formatDate(req.createdAt)}</td>
+                      <td className="text-sm font-medium p-4">{req.firstName} {req.lastName}</td>
+                      <td className="text-sm p-4">{req.phone}</td>
+                      <td className="text-sm p-4">{req.subject}</td>
+                      <td className="text-sm p-4">
+                        <Badge className={cn("text-xs border font-bold rounded-md", statusConfig.className)}>
                           {statusConfig.label}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
+                      </td>
+                      <td className="text-center p-4">
                         <Dialog
-                          open={
-                            isDialogOpen && selectedRequest?._id === req._id
-                          }
+                          open={isDialogOpen && selectedRequest?._id === req._id}
                           onOpenChange={setIsDialogOpen}
                         >
                           <DialogTrigger asChild>
@@ -386,34 +344,19 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
                             <div className="space-y-4 py-4">
                               <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    نام و نام خانوادگی
-                                  </p>
-                                  <p className="font-medium">
-                                    {selectedRequest?.firstName}{" "}
-                                    {selectedRequest?.lastName}
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">نام و نام خانوادگی</p>
+                                  <p className="font-medium">{selectedRequest?.firstName} {selectedRequest?.lastName}</p>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    شماره تماس
-                                  </p>
-                                  <p className="font-medium font-mono">
-                                    {selectedRequest?.phone}
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">شماره تماس</p>
+                                  <p className="font-medium font-mono">{selectedRequest?.phone}</p>
                                 </div>
                                 <div className="col-span-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    موضوع
-                                  </p>
-                                  <p className="font-medium">
-                                    {selectedRequest?.subject}
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">موضوع</p>
+                                  <p className="font-medium">{selectedRequest?.subject}</p>
                                 </div>
                                 <div className="col-span-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    پیام
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">پیام</p>
                                   <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/30">
                                     {selectedRequest?.message || "بدون پیام"}
                                   </p>
@@ -421,51 +364,28 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
                               </div>
 
                               <div className="space-y-2">
-                                <Label className="text-xs font-bold">
-                                  تغییر وضعیت
-                                </Label>
-                                <Select
-                                  value={newStatus}
-                                  onValueChange={setNewStatus}
-                                >
+                                <Label className="text-xs font-bold">تغییر وضعیت</Label>
+                                <Select value={newStatus} onValueChange={setNewStatus}>
                                   <SelectTrigger className="rounded-xl h-11">
                                     <SelectValue placeholder="انتخاب وضعیت جدید" />
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl">
-                                    <SelectItem value="pending">
-                                      در انتظار
-                                    </SelectItem>
-                                    <SelectItem value="approved">
-                                      تأیید شده
-                                    </SelectItem>
-                                    <SelectItem value="rejected">
-                                      رد شده
-                                    </SelectItem>
-                                    <SelectItem value="completed">
-                                      تکمیل شده
-                                    </SelectItem>
+                                    <SelectItem value="pending">در انتظار</SelectItem>
+                                    <SelectItem value="approved">تأیید شده</SelectItem>
+                                    <SelectItem value="rejected">رد شده</SelectItem>
+                                    <SelectItem value="completed">تکمیل شده</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
 
                               <div className="flex justify-end gap-3 pt-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setIsDialogOpen(false)}
-                                  className="rounded-xl"
-                                >
+                                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl">
                                   انصراف
                                 </Button>
                                 <Button
                                   onClick={() => {
-                                    if (
-                                      selectedRequest &&
-                                      newStatus !== selectedRequest.status
-                                    ) {
-                                      handleStatusChange(
-                                        selectedRequest._id,
-                                        newStatus,
-                                      );
+                                    if (selectedRequest && newStatus !== selectedRequest.status) {
+                                      handleStatusChange(selectedRequest._id, newStatus);
                                     } else {
                                       toast.info("وضعیت جدیدی انتخاب نشده است");
                                     }
@@ -486,15 +406,66 @@ export function ConsultingManagement({ role }: ConsultingManagementProps) {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      </TableCell>
-                    </motion.tr>
+                      </td>
+                    </tr>
                   );
                 })
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile list */}
+        <div className="sm:hidden divide-y divide-border/40">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            ))
+          ) : requests.length === 0 ? (
+            <div className="py-16 text-center text-muted-foreground">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="font-medium text-sm">هیچ درخواست مشاوره‌ای یافت نشد</p>
+            </div>
+          ) : (
+            requests.map((req) => {
+              const statusConfig = STATUS_BADGE[req.status] || STATUS_BADGE.pending;
+              return (
+                <div key={req._id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-foreground line-clamp-1">
+                      {req.firstName} {req.lastName}
+                    </p>
+                    <Badge className={cn("text-xs border font-bold rounded-md shrink-0", statusConfig.className)}>
+                      {statusConfig.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{req.subject}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">{formatDate(req.createdAt)}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg h-8"
+                      onClick={() => {
+                        setSelectedRequest(req);
+                        setNewStatus(req.status);
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      مدیریت
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </Card>
-    </div>
+    </motion.div>
   );
 }

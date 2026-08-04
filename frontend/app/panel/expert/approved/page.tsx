@@ -1,4 +1,3 @@
-// app/panel/expert/approved/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -22,12 +21,13 @@ import {
   Filter,
   Eye,
   Trash2,
-  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { expertApi } from "@/services/api/expert.api";
 import apiClient from "@/services/api/client";
 import { useAuth } from "@/app/context/AuthContext";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,19 +38,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AdCard } from "@/components/home/AdCard"; // ✅ کارت آگهی استاندارد
 
-// 📅 DatePicker معمولی (تقویم میلادی)
+// 📅 DatePicker
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import moment from "moment-jalaali";
 
-// ─── فرمت‌دهنده‌ها ──────────────────────
 const formatPrice = (price: number) => {
   if (!price) return "توافقی";
   if (price >= 1_000_000_000)
     return `${(price / 1_000_000_000).toFixed(1)} میلیارد`;
   if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(0)} میلیون`;
-  return price.toLocaleString() + " تومان";
+  return price.toLocaleString("fa-IR") + " تومان";
 };
 
 const getTimeAgo = (dateString: string) => {
@@ -61,16 +61,8 @@ const getTimeAgo = (dateString: string) => {
   return `${Math.floor(diffHrs / 24)} روز`;
 };
 
-const getImageUrl = (url: string) => {
-  if (!url) return "/placeholder.jpg";
-  if (url.startsWith("http")) return url;
-  return `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001"}${url}`;
-};
-
 export default function ApprovedAdsPage() {
   const { user } = useAuth();
-
-  // بررسی مجوز حذف: ادمین، مدیر ارشد یا کارشناس (اگر مجوز دارند)
   const canDelete =
     user?.role === "admin" ||
     user?.role === "super_admin" ||
@@ -84,12 +76,10 @@ export default function ApprovedAdsPage() {
   const [totalAds, setTotalAds] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // فیلترهای تاریخ
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // حذف
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -141,23 +131,17 @@ export default function ApprovedAdsPage() {
   }, [fetchAds]);
 
   const handleSearch = () => setPage(1);
-  const handleRefresh = () => {
-    fetchAds(true);
-    toast.success("لیست بروزرسانی شد");
-  };
+  const handleRefresh = () => fetchAds(true);
 
-  // ─── حذف آگهی با مسیر صحیح ──────────────────
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      // ✅ مسیر صحیح برای حذف آگهی توسط ادمین/سوپرادمین
       await apiClient.delete(`/admin/ads/${deleteTarget}`);
       toast.success("آگهی با موفقیت حذف شد");
       setAds((prev) => prev.filter((a) => a._id !== deleteTarget));
       setTotalAds((prev) => prev - 1);
     } catch (error: any) {
-      console.error("Delete error:", error);
       toast.error(error.response?.data?.message || "خطا در حذف آگهی");
     } finally {
       setDeleting(false);
@@ -172,7 +156,7 @@ export default function ApprovedAdsPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6" dir="rtl">
-      {/* ===== Header ===== */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -216,7 +200,7 @@ export default function ApprovedAdsPage() {
         </div>
       </motion.div>
 
-      {/* ===== Search & Filter ===== */}
+      {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-72">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -229,10 +213,7 @@ export default function ApprovedAdsPage() {
           />
           {searchTerm && (
             <button
-              onClick={() => {
-                setSearchTerm("");
-                setPage(1);
-              }}
+              onClick={() => { setSearchTerm(""); setPage(1); }}
               className="absolute left-3 top-1/2 -translate-y-1/2"
             >
               <X className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
@@ -259,7 +240,7 @@ export default function ApprovedAdsPage() {
         </div>
       </div>
 
-      {/* ===== Filter Modal ===== */}
+      {/* Filter Modal */}
       <AnimatePresence>
         {modalOpen && (
           <motion.div
@@ -347,7 +328,7 @@ export default function ApprovedAdsPage() {
         )}
       </AnimatePresence>
 
-      {/* ===== Ads Grid ===== */}
+      {/* Ads Grid (با AdCard) */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
@@ -379,98 +360,56 @@ export default function ApprovedAdsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className="h-full"
+                className="flex flex-col"
               >
-                <Card className="h-full border-border/50 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group rounded-2xl bg-card">
-                  <div className="relative h-36 bg-muted/30 overflow-hidden">
-                    {ad.images?.[0] ? (
-                      <img
-                        src={getImageUrl(ad.images[0])}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        alt={ad.title}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
-                        <FileText className="w-12 h-12 text-primary/30" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-primary text-white text-[10px] px-2.5 py-0.5 rounded-full shadow-md shadow-primary/20">
-                        <CheckCircle className="w-3 h-3 ml-1" />
-                        تأیید شده
-                      </Badge>
-                    </div>
-                    {canDelete && (
-                      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 bg-black/40 backdrop-blur-sm hover:bg-black/60 text-white rounded-full"
-                          onClick={() => setDeleteTarget(ad._id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/ads/${ad._id}`}
-                        target="_blank"
-                        className="flex-1 min-w-0"
-                      >
-                        <h3 className="font-bold text-sm line-clamp-1 hover:text-primary transition-colors">
-                          {ad.title}
-                        </h3>
-                      </Link>
-                    </div>
-                    <p className="text-base font-extrabold text-primary">
-                      {formatPrice(ad.price)}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 truncate">
-                        <MapPin className="w-3 h-3 shrink-0" />
-                        {ad.city || "نامشخص"}
-                      </span>
-                      <span className="flex items-center gap-1 shrink-0">
-                        <Clock className="w-3 h-3" />
-                        {getTimeAgo(ad.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <Link
-                        href={`/ads/${ad._id}`}
-                        target="_blank"
-                        className="flex-1"
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-1 rounded-lg text-xs border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          مشاهده
-                        </Button>
-                      </Link>
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                          onClick={() => setDeleteTarget(ad._id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* کارت آگهی استاندارد */}
+                <AdCard
+                  _id={ad._id}
+                  title={ad.title}
+                  price={ad.price || 0}
+                  city={ad.city}
+                  district={ad.district}
+                  images={ad.images}
+                  createdAt={ad.createdAt}
+                  isUrgent={ad.isUrgent}
+                  isVerified={ad.isVerified}
+                  adType={ad.adType}
+                  userRole={ad.userId?.role}
+                />
+
+                {/* نوار عملیات (مشاهده / حذف) */}
+                <div className="flex items-center gap-2 mt-2 px-1">
+                  <Link
+                    href={`/ad/${ad._id}`}
+                    target="_blank"
+                    className="flex-1"
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1 rounded-lg text-xs border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      مشاهده
+                    </Button>
+                  </Link>
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 rounded-lg text-xs text-destructive border-destructive/20 hover:bg-destructive/10"
+                      onClick={() => setDeleteTarget(ad._id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      حذف
+                    </Button>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
 
-          {/* ===== Pagination ===== */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
               <Button
@@ -522,7 +461,7 @@ export default function ApprovedAdsPage() {
         </>
       )}
 
-      {/* ===== Delete Confirmation ===== */}
+      {/* Delete Confirmation */}
       {canDelete && (
         <AlertDialog
           open={!!deleteTarget}
@@ -531,7 +470,7 @@ export default function ApprovedAdsPage() {
           <AlertDialogContent className="rounded-2xl dir-rtl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                <AlertCircle className="w-5 h-5" />
+                <Trash2 className="w-5 h-5" />
                 حذف آگهی
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -548,7 +487,11 @@ export default function ApprovedAdsPage() {
                 disabled={deleting}
                 className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {deleting ? "در حال حذف..." : "بله، حذف شود"}
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "بله، حذف شود"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

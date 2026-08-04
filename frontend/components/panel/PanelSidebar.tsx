@@ -34,7 +34,20 @@ import {
   Database,
   History,
   Webhook,
-  Bookmark, // 🆕 برای ذخیره‌شده‌ها
+  Bookmark,
+  Activity,
+  ScrollText,
+  Globe,
+  CreditCard,
+  SlidersHorizontal,
+  MessageCircle,
+  Cookie,
+  ShieldAlert,
+  MapPin,
+  Download,
+  ShieldCheck,
+  Search,
+  HomeIcon, // 🆕 برای ذخیره‌شده‌ها
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,152 +60,348 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
-// ─── منوی کاربر عادی ───
-const userMenu = [
+// ─── منوی کاربر عادی (USER) ───
+export const userMenu = [
   {
     href: "/panel/user/dashboard",
     label: "داشبورد عملکرد",
     icon: LayoutDashboard,
   },
+  {
+    href: "/panel/user/consulting",
+    label: "درخواست مشاوره",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/user/my-consulting",
+    label: "مشاوره‌های من",
+    icon: MessageSquare,
+  },
   { href: "/panel/user/my-ads", label: "آگهی‌های من", icon: FileText },
-  { href: "/panel/user/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark }, // 🆕 جایگزین Heart
+  { href: "/panel/user/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
   { href: "/panel/user/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/user/tickets", label: "تیکت‌های من", icon: Ticket },
+  {
+    href: "/panel/user/comments",
+    label: "نظرات آگهی‌های من",
+    icon: MessageSquare,
+  },
+  { href: "/panel/user/reports-my", label: "گزارشات تخلف من", icon: Flag },
   { href: "/panel/user/profile", label: "پروفایل کاربری", icon: User },
   { href: "/panel/user/settings", label: "تنظیمات پنل", icon: Settings },
 ];
 
 // ─── منوی VIP ───
-const vipMenu = [
-  { href: "/panel/vip", label: "داشبورد ویژه", icon: LayoutDashboard },
+export const vipMenu = [
+  {
+    href: "/panel/vip/dashboard",
+    label: "داشبورد ویژه",
+    icon: LayoutDashboard,
+  },
+  {
+    href: "/panel/vip/consulting",
+    label: "درخواست مشاوره",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/vip/my-consulting",
+    label: "مشاوره‌های من",
+    icon: MessageSquare,
+  },
   { href: "/panel/vip/my-ads", label: "آگهی‌های من", icon: Crown },
+  {
+    href: "/panel/vip/advanced-search",
+    label: "جستجوی پیشرفته",
+    icon: Search,
+  },
   { href: "/panel/vip/notifications", label: "اعلان‌ها", icon: Bell },
   { href: "/panel/vip/analytics", label: "آمار و تحلیل", icon: TrendingUp },
+  {
+    href: "/panel/vip/agents",
+    label: "مدیریت کارشناسان آژانس",
+    icon: HomeIcon,
+  },
   {
     href: "/panel/vip/market-analysis",
     label: "تحلیل صنف و بازار",
     icon: BarChart3,
   },
-  { href: "/panel/vip/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark }, // 🆕
+  { href: "/panel/vip/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
   {
     href: "/panel/vip/comments",
     label: "نظرات آگهی‌های من",
     icon: MessageSquare,
   },
-  { href: "/panel/vip/settings", label: "تنظیمات", icon: Settings },
+  { href: "/panel/vip/reports-my", label: "گزارشات", icon: FileText },
+  { href: "/panel/vip/support", label: "تیکت پشتیبانی", icon: MessageSquare },
   { href: "/panel/vip/profile", label: "پروفایل", icon: User },
+  { href: "/panel/vip/settings", label: "تنظیمات", icon: Settings },
 ];
 
-// ─── منوی agent ───
-const agentMenu = [
+// ─── منوی آژانس (AGENT) ───
+export const agentMenu = [
   {
     href: "/panel/agent/dashboard",
     label: "داشبورد آژانس",
     icon: LayoutDashboard,
   },
+  {
+    href: "/panel/agent/consulting",
+    label: "درخواست مشاوره",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/agent/my-consulting",
+    label: "مشاوره‌های من",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/agent/consulting/manage",
+    label: "مدیریت درخواست‌ها",
+    icon: Users,
+  },
   { href: "/panel/agent/my-ads", label: "آگهی‌های من", icon: FileText },
+  {
+    href: "/panel/agent/advanced-search",
+    label: "جستجوی پیشرفته",
+    icon: Search,
+  },
+  { href: "/panel/agent/bookmarks", label: "ذخیره‌شده‌ها", icon: Bookmark },
   {
     href: "/panel/agent/comments",
     label: "نظرات آگهی‌های من",
     icon: MessageSquare,
   },
   { href: "/panel/agent/tickets", label: "تیکت‌های پشتیبانی", icon: Ticket },
+  { href: "/panel/agent/properties", label: "فهرست املاک", icon: Building },
+  { href: "/panel/agent/agents", label: "مدیریت مشاوران", icon: Users },
+  { href: "/panel/agent/reports", label: "گزارشات آژانس", icon: FileText },
   {
     href: "/panel/agent/market-analysis",
-    label: "تحلیل تخصصی بازار",
-    icon: BarChart3,
+    label: "تحلیل بازار",
+    icon: TrendingUp,
   },
-  { href: "/panel/agent/agents", label: "مدیریت مشاوران", icon: Users },
-  { href: "/panel/agent/properties", label: "فهرست املاک", icon: Building },
-  { href: "/panel/agent/reports", label: "گزارشات آژانس", icon: FileText },
+  { href: "/panel/agent/chat", label: "گفتگوی داخلی", icon: MessageSquare },
+  { href: "/panel/agent/notifications", label: "اعلان‌ها", icon: Bell },
+  { href: "/panel/agent/reports-my", label: "گزارشات تخلف من", icon: Flag },
+  { href: "/panel/agent/settings", label: "تنظیمات", icon: Settings },
   { href: "/panel/agent/profile", label: "پروفایل مدیریتی", icon: User },
 ];
 
-// ─── منوی developer ───
-const developerMenu = [
+// ─── منوی برنامه‌نویس (DEVELOPER) ───
+export const developerMenu = [
   {
     href: "/panel/developer/dashboard",
-    label: "کنسول توسعه‌دهنده",
+    label: "داشبورد",
     icon: LayoutDashboard,
   },
-  { href: "/panel/developer/api", label: "کلیدهای API", icon: Key },
-  { href: "/panel/developer/docs", label: "مستندات فنی", icon: BookOpen },
-  { href: "/panel/developer/webhooks", label: "وب‌هوک‌ها", icon: Webhook },
+  { href: "/panel/developer/api-key", label: "API Keys", icon: Key },
+  { href: "/panel/developer/webhooks", label: "Webhooks", icon: Webhook },
   {
-    href: "/panel/developer/tickets",
-    label: "تیکت‌های پشتیبانی",
-    icon: Ticket,
+    href: "/panel/developer/logs",
+    label: "لاگ‌ها و آنالیتیکس",
+    icon: BarChart3,
   },
-  {
-    href: "/panel/developer/profile",
-    label: "پروفایل توسعه‌دهنده",
-    icon: User,
-  },
+  { href: "/panel/developer/docs", label: "مستندات", icon: BookOpen },
+  { href: "/panel/developer/notifications", label: "اعلان‌ها", icon: Bell },
+  { href: "/panel/developer/settings", label: "تنظیمات", icon: Settings },
+  { href: "/panel/developer/profile", label: "پروفایل", icon: User },
 ];
 
-// ─── منوی expert ───
-const expertMenu = [
+// ─── منوی کارشناس (EXPERT) ───
+export const expertMenu = [
   {
     href: "/panel/expert/dashboard",
     label: "داشبورد کارشناسی",
     icon: LayoutDashboard,
   },
+  {
+    href: "/panel/expert/consulting",
+    label: "درخواست مشاوره",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/expert/my-consulting",
+    label: "مشاوره‌های من",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/expert/consulting/manage",
+    label: "مدیریت درخواست‌ها",
+    icon: Users,
+  },
+  { href: "/panel/expert/bulk-upload", label: "بارگذاری آگهی", icon: Download },
   { href: "/panel/expert/pending", label: "در انتظار بررسی", icon: Clock },
   { href: "/panel/expert/approved", label: "تایید شده‌ها", icon: CheckCircle },
   { href: "/panel/expert/rejected", label: "رد شده‌ها", icon: XCircle },
-  { href: "/panel/expert/tickets", label: "تیکت‌های پشتیبانی", icon: Ticket },
-  {
-    href: "/panel/expert/chat",
-    label: "اتاق گفتگو پشتیبانی",
-    icon: MessageSquare,
-  },
+  { href: "/panel/expert/verify-ads", label: "تأیید آگهی", icon: ShieldCheck },
+  { href: "/panel/expert/notifications", label: "اعلان‌ها", icon: Bell },
+  { href: "/panel/expert/chat", label: "اتاق گفتگو", icon: MessageSquare },
+  { href: "/panel/expert/tickets", label: "تیکت‌ها و پشتیبانی", icon: Ticket },
+  { href: "/panel/expert/reports", label: "گزارشات", icon: BarChart3 },
+  { href: "/panel/expert/bookmarks", label: "نشان‌ها", icon: Bookmark },
   { href: "/panel/expert/profile", label: "پروفایل کارشناس", icon: User },
+  { href: "/panel/expert/settings", label: "تنظیمات", icon: Settings },
 ];
 
-// ─── منوی admin ───
-const adminMenu = [
+// ─── منوی ادمین (ADMIN) ───
+export const adminMenu = [
   {
     href: "/panel/admin/dashboard",
     label: "داشبورد مدیریت",
     icon: LayoutDashboard,
   },
-  { href: "/panel/admin/users", label: "مدیریت کاربران", icon: Users },
-  { href: "/panel/admin/ads", label: "مدیریت آگهی‌ها", icon: FileText },
-  { href: "/panel/admin/tickets", label: "مدیریت تیکت‌ها", icon: Ticket },
-  { href: "/panel/admin/reports", label: "گزارشات", icon: Flag },
-  { href: "/panel/admin/comments", label: "مدیریت نظرات", icon: MessageSquare },
-  { href: "/panel/admin/profile", label: "پروفایل ادمین", icon: User },
-  { href: "/panel/admin/settings", label: "تنظیمات سیستم", icon: Settings },
+  {
+    href: "/panel/admin/users",
+    label: "مدیریت کاربران",
+    icon: Users,
+  },
+  {
+    href: "/panel/admin/ads",
+    label: "مدیریت آگهی‌ها",
+    icon: FileText,
+  },
+  {
+    href: "/panel/admin/tickets",
+    label: "مدیریت تیکت‌ها",
+    icon: Ticket,
+  },
+  {
+    href: "/panel/admin/reports",
+    label: "گزارشات",
+    icon: Flag,
+  },
+  {
+    href: "/panel/admin/special-ads",
+    label: "مدیریت آگهی‌های فوری و ویژه",
+    icon: Sparkles,
+  },
+  // ✅ آیتم جدید
+  {
+    href: "/panel/admin/location-map",
+    label: "نقشه کاربران آنلاین",
+    icon: MapPin,
+  },
+  {
+    href: "/panel/admin/analytics",
+    label: "گزارشات پیشرفته",
+    icon: Flag,
+  },
+  {
+    href: "/panel/admin/comments",
+    label: "مدیریت نظرات",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/admin/profile",
+    label: "پروفایل ادمین",
+    icon: User,
+  },
+  {
+    href: "/panel/admin/settings",
+    label: "تنظیمات سیستم",
+    icon: Settings,
+  },
 ];
 
-// ─── منوی super_admin ───
-const superAdminMenu = [
+// ─── منوی مدیر ارشد (SUPER_ADMIN) ───
+export const superAdminMenu = [
   {
     href: "/panel/super-admin/dashboard",
     label: "داشبورد مدیر ارشد",
     icon: LayoutDashboard,
   },
-  { href: "/panel/super-admin/admins", label: "مدیریت ادمین‌ها", icon: Shield },
-  { href: "/panel/super-admin/users", label: "نظارت کل کاربران", icon: Users },
+  {
+    href: "/panel/super-admin/special-ads",
+    label: "مدیریت آگهی‌های فوری و ویژه",
+    icon: Sparkles,
+  },
+  // ✅ آیتم جدید
+  {
+    href: "/panel/super-admin/location-map",
+    label: "نقشه کاربران آنلاین",
+    icon: MapPin,
+  },
+  {
+    href: "/panel/super-admin/graph",
+    label: "تحلیل شبکه و مدیریت گراف",
+    icon: LayoutDashboard,
+  },
+  {
+    href: "/panel/super-admin/blacklist-keywords",
+    label: "کلمات سیاه‌لیست",
+    icon: ShieldAlert,
+  },
+  {
+    href: "/panel/super-admin/cookie-audits",
+    label: "رصد کوکی و نشست‌های کاربران",
+    icon: Cookie,
+  },
   {
     href: "/panel/super-admin/ads",
     label: "مدیریت کل آگهی‌ها",
     icon: FileText,
   },
+  { href: "/panel/super-admin/users", label: "مدیریت کاربران", icon: Users },
+  { href: "/panel/super-admin/admins", label: "مدیریت ادمین‌ها", icon: Shield },
+  {
+    href: "/panel/super-admin/chat-monitor",
+    label: "رصد چت و پیام‌ها",
+    icon: MessageCircle,
+  },
+  {
+    href: "/panel/super-admin/roles",
+    label: "نقش‌ها و مجوزها",
+    icon: SlidersHorizontal,
+  },
   { href: "/panel/super-admin/tickets", label: "مدیریت تیکت‌ها", icon: Ticket },
+  {
+    href: "/panel/super-admin/comments",
+    label: "مدیریت کامنت‌ها",
+    icon: MessageSquare,
+  },
+  {
+    href: "/panel/super-admin/financial",
+    label: "گزارش‌های مالی",
+    icon: CreditCard,
+  },
+  {
+    href: "/panel/super-admin/subscriptions",
+    label: "پلن‌های اشتراک و VIP",
+    icon: Gift,
+  },
+  { href: "/panel/super-admin/banners", label: "مدیریت بنرها", icon: Globe },
+  {
+    href: "/panel/super-admin/market-analysis",
+    label: "تحلیل بازار",
+    icon: TrendingUp,
+  },
+  { href: "/panel/super-admin/api-keys", label: "کلیدهای API", icon: Key },
+  { href: "/panel/super-admin/webhooks", label: "وب‌هوک‌ها", icon: Webhook },
+  {
+    href: "/panel/super-admin/settings",
+    label: "تنظیمات سایت",
+    icon: Settings,
+  },
   { href: "/panel/super-admin/backup", label: "پشتیبان‌گیری", icon: Database },
-  { href: "/panel/super-admin/logs", label: "لاگ‌های سیستم", icon: History },
+  {
+    href: "/panel/super-admin/audit-logs",
+    label: "لاگ رویدادها",
+    icon: ScrollText,
+  },
+  { href: "/panel/super-admin/traffic", label: "ترافیک سایت", icon: Activity },
+  {
+    href: "/panel/super-admin/notifications",
+    label: "اعلان‌های سیستمی",
+    icon: Bell,
+  },
   {
     href: "/panel/super-admin/profile",
     label: "پروفایل مدیر ارشد",
     icon: User,
   },
-  {
-    href: "/panel/super-admin/settings",
-    label: "پیکربندی سرور",
-    icon: Settings,
-  },
 ];
+
 
 export function PanelSidebar() {
   const pathname = usePathname();

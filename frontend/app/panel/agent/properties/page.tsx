@@ -1,3 +1,4 @@
+// app/panel/agent/properties/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,482 +13,402 @@ import {
   Eye,
   Edit,
   Trash2,
-  Plus,
+  PlusCircle,
   MapPin,
-  DollarSign,
-  Home,
   Bed,
   Ruler,
   Calendar,
   Search,
   X,
-  TrendingUp,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
-  RefreshCw,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { propertyApi, Property } from "@/services/api/property.api";
+import { getImageUrl } from "@/lib/getImageUrl";
+import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { KpiCard } from "@/components/panel/KpiCard";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
+const formatPrice = (price: number) => {
+  if (!price) return "توافقی";
+  if (price >= 1_000_000_000)
+    return `${(price / 1_000_000_000).toFixed(1)} میلیارد تومان`;
+  if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(0)} میلیون تومان`;
+  return price.toLocaleString("fa-IR") + " تومان";
+};
+
+const formatDate = (date: string) => new Date(date).toLocaleDateString("fa-IR");
 
 export default function AgentPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
+  const [filtered, setFiltered] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "pending" | "sold"
-  >("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const itemsPerPage = 6;
+
+  const fetchProperties = async () => {
+    setLoading(true);
+    try {
+      const res = await propertyApi.getAgentProperties({ limit: 100 });
+      const data = res.data || [];
+      setProperties(data);
+    } catch (err: any) {
+      toast.error("خطا در دریافت املاک");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchProperties();
   }, []);
 
   useEffect(() => {
-    let filtered = [...properties];
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (property) =>
-          property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          property.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          property.address.toLowerCase().includes(searchTerm.toLowerCase())
+    let result = [...properties];
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(s) ||
+          p.city.toLowerCase().includes(s) ||
+          p.address?.toLowerCase().includes(s),
       );
     }
-
     if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (property) => property.status === statusFilter
-      );
+      result = result.filter((p) => p.status === statusFilter);
     }
+    setFiltered(result);
+    setPage(1);
+  }, [properties, search, statusFilter]);
 
-    setFilteredProperties(filtered);
-    setCurrentPage(1);
-  }, [properties, searchTerm, statusFilter]);
-
-  const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
-  const paginatedProperties = filteredProperties.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage,
   );
 
-  const fetchProperties = async () => {
-    setLoading(true);
-    setError(null);
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+    setDeleteLoading(true);
     try {
-      const response = await propertyApi.getAgentProperties({ limit: 100 });
-      const data = response.data || [];
-      setProperties(data);
-      setFilteredProperties(data);
+      await propertyApi.delete(deleteId);
+      toast.success("ملک حذف شد");
+      setProperties((prev) => prev.filter((p) => p._id !== deleteId));
     } catch (err: any) {
-      console.error("Error fetching properties:", err);
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "خطا در دریافت املاک";
-      setError(message);
-      toast.error(message);
+      toast.error(err.response?.data?.message || "خطا در حذف");
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
+      setDeleteId(null);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("آیا از حذف این ملک اطمینان دارید؟")) return;
-    try {
-      await propertyApi.delete(id);
-      toast.success("ملک با موفقیت حذف شد");
-      fetchProperties();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "خطا در حذف ملک");
-    }
+  const stats = {
+    total: properties.length,
+    active: properties.filter((p) => p.status === "active").length,
+    pending: properties.filter((p) => p.status === "pending").length,
+    sold: properties.filter((p) => p.status === "sold").length,
   };
-
-  const formatPrice = (price: number) => {
-    if (!price) return "توافقی";
-    if (price >= 1_000_000_000)
-      return `${(price / 1_000_000_000).toFixed(1)} میلیارد تومان`;
-    if (price >= 1_000_000)
-      return `${(price / 1_000_000).toFixed(0)} میلیون تومان`;
-    return price.toLocaleString() + " تومان";
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("fa-IR");
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-3 py-0.5 rounded-full">
-            فعال
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-0.5 rounded-full">
-            در انتظار تایید
-          </Badge>
-        );
-      case "sold":
-        return (
-          <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-0.5 rounded-full">
-            فروخته شده
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="rounded-full">
-            {status}
-          </Badge>
-        );
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-4 w-48 mt-1" />
-          </div>
-          <Skeleton className="h-10 w-32 rounded-xl" />
-        </div>
-        <div className="flex gap-3">
-          <Skeleton className="h-10 flex-1 rounded-xl" />
-          <Skeleton className="h-10 w-28 rounded-xl" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-64 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error && properties.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">خطا در دریافت املاک</h2>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <Button onClick={fetchProperties} className="gap-2">
-          <RefreshCw className="w-4 h-4" />
-          تلاش مجدد
-        </Button>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
       >
-        <div>
-          <h1 className="text-2xl font-bold">مدیریت املاک</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            مدیریت املاک ثبت شده آژانس
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">
+              مدیریت املاک
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              مدیریت املاک ثبت‌شدهٔ آژانس
+            </p>
+          </div>
         </div>
-        <Link href="/panel/agent/properties/create">
-          <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg transition-all duration-300 rounded-xl">
-            <Plus className="w-4 h-4" />
+        <Link
+          href="/panel/agent/properties/create"
+          className="w-full sm:w-auto"
+        >
+          <Button className="w-full sm:w-auto gap-2 rounded-xl font-bold shadow-md shadow-primary/10">
+            <PlusCircle className="w-4 h-4" />
             ثبت ملک جدید
           </Button>
         </Link>
       </motion.div>
 
-      {/* Search & Filter */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3"
-      >
+      {/* Stats Cards with KpiCard */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KpiCard
+          title="کل املاک"
+          value={stats.total}
+          icon={<Building2 className="w-5 h-5" />}
+          color="orange"
+        />
+        <KpiCard
+          title="فعال"
+          value={stats.active}
+          icon={<Eye className="w-5 h-5" />}
+          color="green"
+        />
+        <KpiCard
+          title="در انتظار"
+          value={stats.pending}
+          icon={<Calendar className="w-5 h-5" />}
+          color="purple"
+        />
+        <KpiCard
+          title="فروخته شده"
+          value={stats.sold}
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          color="blue"
+        />
+      </div>
+
+      {/* Filter & Search */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="جستجوی ملک (عنوان، شهر، آدرس)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10 rounded-xl bg-muted/30 border-0 focus:ring-primary"
+            placeholder="جستجو..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pr-10 rounded-xl h-10 bg-muted/40 border-border/60 focus:ring-primary"
           />
-          {searchTerm && (
+          {search && (
             <button
-              onClick={() => setSearchTerm("")}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2"
+              onClick={() => setSearch("")}
+              className="absolute left-3 top-1/2 -translate-y-1/2"
             >
-              <X className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+              <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
             </button>
           )}
         </div>
         <div className="flex gap-2">
+          {[
+            { key: "all", label: "همه" },
+            { key: "active", label: "فعال" },
+            { key: "pending", label: "در انتظار" },
+            { key: "sold", label: "فروخته" },
+          ].map((f) => (
+            <Button
+              key={f.key}
+              variant={statusFilter === f.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(f.key)}
+              className={cn(
+                "rounded-xl text-xs font-bold",
+                statusFilter === f.key
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border-border/60 hover:bg-muted",
+              )}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Property Cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-72 rounded-2xl" />
+          ))}
+        </div>
+      ) : paginated.length === 0 ? (
+        <Card className="border-2 border-dashed border-border/60 bg-muted/20 rounded-2xl">
+          <CardContent className="py-16 text-center">
+            <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" />
+            <p className="font-bold text-foreground">هیچ ملکی یافت نشد</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paginated.map((p) => (
+            <Card
+              key={p._id}
+              className="border-border/60 shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm group"
+            >
+              <div className="relative h-44 bg-muted">
+                <img
+                  src={getImageUrl(p.images?.[0])}
+                  alt={p.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/images/user.webp";
+                  }}
+                />
+                <Badge
+                  className={cn(
+                    "absolute top-3 left-3 text-xs font-bold",
+                    p.status === "active"
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                      : p.status === "pending"
+                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        : "bg-blue-500/10 text-blue-600 border-blue-500/20",
+                  )}
+                >
+                  {p.status === "active"
+                    ? "فعال"
+                    : p.status === "pending"
+                      ? "در انتظار"
+                      : "فروخته"}
+                </Badge>
+              </div>
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-bold text-sm line-clamp-1">{p.title}</h3>
+                <p className="font-black text-primary text-lg">
+                  {formatPrice(p.price)}
+                </p>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                  {p.city}
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Ruler className="w-3.5 h-3.5" /> {p.area} متر
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Bed className="w-3.5 h-3.5" /> {p.rooms} خواب
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />{" "}
+                    {formatDate(p.createdAt)}
+                  </span>
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-border/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1 rounded-lg text-xs"
+                    onClick={() =>
+                      window.open(`/property/${p._id}`, "_blank")
+                    }
+                  >
+                    <Eye className="w-3.5 h-3.5" /> مشاهده
+                  </Button>
+                  <Link
+                    href={`/panel/agent/properties/edit/${p._id}`}
+                    className="flex-1"
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1 rounded-lg text-xs text-amber-600 border-amber-500/20 hover:bg-amber-500 hover:text-white"
+                    >
+                      <Edit className="w-3.5 h-3.5" /> ویرایش
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 rounded-lg text-xs text-rose-500 border-rose-500/20 hover:bg-rose-600 hover:text-white"
+                    onClick={() => setDeleteId(p._id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
           <Button
-            variant={statusFilter === "all" ? "default" : "outline"}
-            onClick={() => setStatusFilter("all")}
-            className={`rounded-xl ${statusFilter === "all" ? "bg-primary hover:bg-primary/90" : ""}`}
+            variant="outline"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="rounded-xl h-9 gap-1"
           >
-            همه
+            <ChevronRight className="w-4 h-4" /> قبلی
           </Button>
+          <span className="text-sm font-bold px-4">
+            {page} از {totalPages}
+          </span>
           <Button
-            variant={statusFilter === "active" ? "default" : "outline"}
-            onClick={() => setStatusFilter("active")}
-            className={`rounded-xl ${statusFilter === "active" ? "bg-emerald-500 hover:bg-emerald-600" : ""}`}
+            variant="outline"
+            size="sm"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="rounded-xl h-9 gap-1"
           >
-            فعال
-          </Button>
-          <Button
-            variant={statusFilter === "pending" ? "default" : "outline"}
-            onClick={() => setStatusFilter("pending")}
-            className={`rounded-xl ${statusFilter === "pending" ? "bg-amber-500 hover:bg-amber-600" : ""}`}
-          >
-            در انتظار
-          </Button>
-          <Button
-            variant={statusFilter === "sold" ? "default" : "outline"}
-            onClick={() => setStatusFilter("sold")}
-            className={`rounded-xl ${statusFilter === "sold" ? "bg-blue-500 hover:bg-blue-600" : ""}`}
-          >
-            فروخته شده
+            بعدی <ChevronLeft className="w-4 h-4" />
           </Button>
         </div>
-      </motion.div>
-
-      {/* Properties Grid */}
-      {filteredProperties.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16"
-        >
-          <div className="w-24 h-24 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-            <Building2 className="w-12 h-12 text-muted-foreground/50" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">هیچ ملکی یافت نشد</h3>
-          <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== "all"
-              ? "با فیلترهای اعمال شده ملکی پیدا نشد"
-              : "برای شروع، اولین ملک خود را ثبت کنید"}
-          </p>
-          {(searchTerm || statusFilter !== "all") && (
-            <Button
-              variant="link"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-              }}
-              className="mt-2"
-            >
-              حذف فیلترها
-            </Button>
-          )}
-        </motion.div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {paginatedProperties.map((property, index) => (
-                <motion.div
-                  key={property._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -4 }}
-                >
-                  <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden group">
-                    <div className="relative h-48 bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
-                      {property.images?.[0] ? (
-                        <img
-                          src={property.images[0]}
-                          alt={property.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "/placeholder.jpg";
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Building2 className="w-16 h-16 text-muted-foreground/30" />
-                        </div>
-                      )}
-                      <div className="absolute top-3 left-3">
-                        {getStatusBadge(property.status)}
-                      </div>
-                      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-xs text-white">
-                        {property.views || 0} بازدید
-                      </div>
-                    </div>
-
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-bold text-lg line-clamp-1 flex-1">
-                          {property.title}
-                        </h3>
-                      </div>
-
-                      <div className="mb-3">
-                        <p className="text-xl font-bold text-primary">
-                          {formatPrice(property.price)}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span className="truncate">{property.city}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Ruler className="w-3.5 h-3.5" />
-                            <span>{property.area} متر مربع</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Bed className="w-3.5 h-3.5" />
-                            <span>{property.rooms} خواب</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span>{formatDate(property.createdAt)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 mt-4 pt-3 border-t">
-                        <Link
-                          href={`/property/${property._id}`}
-                          className="flex-1"
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-1 rounded-lg"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            مشاهده
-                          </Button>
-                        </Link>
-                        <Link
-                          href={`/panel/agent/properties/edit/${property._id}`}
-                          className="flex-1"
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-1 rounded-lg"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                            ویرایش
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => handleDelete(property._id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          حذف
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="rounded-full"
-              >
-                <ChevronRight className="w-4 h-4 ml-1" />
-                قبلی
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 p-0 rounded-full ${currentPage === page ? "bg-primary" : ""}`}
-                    >
-                      {page}
-                    </Button>
-                  )
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="rounded-full"
-              >
-                بعدی
-                <ChevronLeft className="w-4 h-4 mr-1" />
-              </Button>
-            </div>
-          )}
-
-          {/* Summary Stats */}
-          <div className="flex justify-between items-center p-4 rounded-xl bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">کل املاک:</span>
-              <span className="font-bold">{properties.length}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-sm text-muted-foreground">فعال:</span>
-                <span className="font-bold">
-                  {properties.filter((p) => p.status === "active").length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-sm text-muted-foreground">
-                  در انتظار:
-                </span>
-                <span className="font-bold">
-                  {properties.filter((p) => p.status === "pending").length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-sm text-muted-foreground">
-                  فروخته شده:
-                </span>
-                <span className="font-bold">
-                  {properties.filter((p) => p.status === "sold").length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </>
       )}
-    </div>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent
+          className="rounded-2xl max-w-[90vw] sm:max-w-md"
+          dir="rtl"
+        >
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="text-lg font-black text-destructive">
+              حذف ملک
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              آیا از حذف این ملک اطمینان دارید؟ این عمل قابل بازگشت نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="rounded-xl">انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+              className="bg-rose-500 hover:bg-rose-600 rounded-xl gap-1"
+            >
+              {deleteLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
   );
 }

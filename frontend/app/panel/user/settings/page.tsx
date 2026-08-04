@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -38,9 +37,6 @@ import {
   Monitor,
   Tablet,
   LogOut,
-  BellOff,
-  CheckCircle2,
-  CheckCircle,
 } from "lucide-react";
 import apiClient from "@/services/api/client";
 import ActiveSessions from "@/components/ui/ActiveSessions";
@@ -76,34 +72,6 @@ const tabs = [
   { id: "security", label: "امنیت", icon: Shield },
 ];
 
-// ⭐ تابع کمکی برای نمایش toast شیک
-const showToggleToast = (label: string, checked: boolean) => {
-  const Icon = checked ? CheckCircle : BellOff;
-  const iconColor = checked ? "#10b981" : "#f59e0b";
-  const bg = checked ? "#ecfdf5" : "#fefce8";
-  const borderColor = checked ? "#10b981" : "#f59e0b";
-
-  toast(
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <Icon size={18} color={iconColor} />
-      <span>{label}</span>
-    </div>,
-    {
-      style: {
-        background: bg,
-        border: `1px solid ${borderColor}`,
-        color: "#1e293b",
-        fontWeight: 600,
-        fontSize: "0.9rem",
-        borderRadius: "12px",
-        padding: "12px 16px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-      },
-      duration: 3000,
-    },
-  );
-};
-
 export default function VipSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,14 +100,11 @@ export default function VipSettingsPage() {
   // --- نشست‌ها ---
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(
-    null,
-  );
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
   const [sessionToRevoke, setSessionToRevoke] = useState<Session | null>(null);
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
-  const [showPasswordConfirmDialog, setShowPasswordConfirmDialog] =
-    useState(false);
+  const [showPasswordConfirmDialog, setShowPasswordConfirmDialog] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -301,10 +266,7 @@ export default function VipSettingsPage() {
   }
 
   return (
-    <div
-      className="space-y-8 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
-      dir="rtl"
-    >
+    <div className="space-y-8 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" dir="rtl">
       {/* هدر شیشه‌ای */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -361,7 +323,7 @@ export default function VipSettingsPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm">
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
                   <CardHeader className="pb-4 px-6 pt-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -391,9 +353,7 @@ export default function VipSettingsPage() {
                                 <Mail className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <Label className="font-semibold">
-                                  اعلان ایمیلی
-                                </Label>
+                                <Label className="font-semibold">اعلان ایمیلی</Label>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   دریافت اعلان‌ها از طریق ایمیل
                                 </p>
@@ -401,13 +361,9 @@ export default function VipSettingsPage() {
                             </div>
                             <Switch
                               checked={settings.emailNotifications}
-                              onCheckedChange={(checked) => {
-                                setSettings({
-                                  ...settings,
-                                  emailNotifications: checked,
-                                });
-                                showToggleToast("اعلان ایمیلی", checked);
-                              }}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, emailNotifications: checked })
+                              }
                             />
                           </div>
                         </div>
@@ -420,9 +376,7 @@ export default function VipSettingsPage() {
                                 <Smartphone className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <Label className="font-semibold">
-                                  اعلان پیامکی
-                                </Label>
+                                <Label className="font-semibold">اعلان پیامکی</Label>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   دریافت پیامک برای رویدادهای مهم
                                 </p>
@@ -430,13 +384,9 @@ export default function VipSettingsPage() {
                             </div>
                             <Switch
                               checked={settings.smsNotifications}
-                              onCheckedChange={(checked) => {
-                                setSettings({
-                                  ...settings,
-                                  smsNotifications: checked,
-                                });
-                                showToggleToast("اعلان پیامکی", checked);
-                              }}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, smsNotifications: checked })
+                              }
                             />
                           </div>
                         </div>
@@ -462,9 +412,7 @@ export default function VipSettingsPage() {
                                 <Megaphone className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <Label className="font-semibold">
-                                  آگهی‌های جدید
-                                </Label>
+                                <Label className="font-semibold">آگهی‌های جدید</Label>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   هنگام انتشار آگهی جدید در دسته‌های منتخب
                                 </p>
@@ -472,13 +420,9 @@ export default function VipSettingsPage() {
                             </div>
                             <Switch
                               checked={settings.newAdAlerts}
-                              onCheckedChange={(checked) => {
-                                setSettings({
-                                  ...settings,
-                                  newAdAlerts: checked,
-                                });
-                                showToggleToast("اعلان آگهی‌های جدید", checked);
-                              }}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, newAdAlerts: checked })
+                              }
                             />
                           </div>
                         </div>
@@ -491,9 +435,7 @@ export default function VipSettingsPage() {
                                 <AlertCircle className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <Label className="font-semibold">
-                                  وضعیت آگهی
-                                </Label>
+                                <Label className="font-semibold">وضعیت آگهی</Label>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   تأیید، رد یا تغییر وضعیت آگهی‌های شما
                                 </p>
@@ -501,13 +443,9 @@ export default function VipSettingsPage() {
                             </div>
                             <Switch
                               checked={settings.adStatusAlerts}
-                              onCheckedChange={(checked) => {
-                                setSettings({
-                                  ...settings,
-                                  adStatusAlerts: checked,
-                                });
-                                showToggleToast("اعلان وضعیت آگهی", checked);
-                              }}
+                              onCheckedChange={(checked) =>
+                                setSettings({ ...settings, adStatusAlerts: checked })
+                              }
                             />
                           </div>
                         </div>
@@ -520,9 +458,7 @@ export default function VipSettingsPage() {
                                 <MessageSquare className="w-5 h-5 text-primary" />
                               </div>
                               <div>
-                                <Label className="font-semibold">
-                                  پیام‌های جدید
-                                </Label>
+                                <Label className="font-semibold">پیام‌های جدید</Label>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   اعلان پیام‌های دریافتی در چت داخلی
                                 </p>
@@ -540,25 +476,14 @@ export default function VipSettingsPage() {
                                 }
                               >
                                 <option value="always">همیشه</option>
-                                <option value="daytime">
-                                  فقط در روز (۸ صبح تا ۱۰ شب)
-                                </option>
-                                <option value="working_hours">
-                                  ساعات کاری (۹ تا ۱۸)
-                                </option>
+                                <option value="daytime">فقط در روز (۸ صبح تا ۱۰ شب)</option>
+                                <option value="working_hours">ساعات کاری (۹ تا ۱۸)</option>
                               </select>
                               <Switch
                                 checked={settings.messageAlerts}
-                                onCheckedChange={(checked) => {
-                                  setSettings({
-                                    ...settings,
-                                    messageAlerts: checked,
-                                  });
-                                  showToggleToast(
-                                    "اعلان پیام‌های جدید",
-                                    checked,
-                                  );
-                                }}
+                                onCheckedChange={(checked) =>
+                                  setSettings({ ...settings, messageAlerts: checked })
+                                }
                               />
                             </div>
                           </div>
@@ -573,7 +498,7 @@ export default function VipSettingsPage() {
                         type="button"
                         onClick={handleSaveNotifications}
                         disabled={saving}
-                        className="gap-2 min-w-[140px]"
+                        className="gap-2 min-w-[140px] rounded-xl"
                       >
                         {saving ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -596,7 +521,7 @@ export default function VipSettingsPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm">
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
                   <CardHeader className="pb-4 px-6 pt-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -618,10 +543,7 @@ export default function VipSettingsPage() {
                           </p>
                         </div>
                       </div>
-                      <Switch
-                        checked={appearance.darkMode}
-                        onCheckedChange={toggleDarkMode}
-                      />
+                      <Switch checked={appearance.darkMode} onCheckedChange={toggleDarkMode} />
                     </div>
 
                     <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-muted/30 opacity-60">
@@ -641,11 +563,7 @@ export default function VipSettingsPage() {
 
                     <Separator />
                     <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        onClick={handleSaveAppearance}
-                        className="gap-2 min-w-[140px]"
-                      >
+                      <Button type="button" onClick={handleSaveAppearance} className="gap-2 min-w-[140px] rounded-xl">
                         <Save className="w-4 h-4" />
                         ذخیره تنظیمات
                       </Button>
@@ -663,7 +581,7 @@ export default function VipSettingsPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm">
+                <Card className="border-0 shadow-card bg-card/80 backdrop-blur-sm rounded-2xl">
                   <CardHeader className="pb-4 px-6 pt-6">
                     <CardTitle className="flex items-center gap-3 text-xl">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -681,19 +599,15 @@ export default function VipSettingsPage() {
                       </div>
 
                       <div className="space-y-4">
-                        {/* رمز فعلی */}
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="رمز عبور فعلی"
                             value={passwordData.currentPassword}
                             onChange={(e) =>
-                              setPasswordData({
-                                ...passwordData,
-                                currentPassword: e.target.value,
-                              })
+                              setPasswordData({ ...passwordData, currentPassword: e.target.value })
                             }
-                            className="pl-10"
+                            className="pl-10 rounded-xl"
                           />
                           <button
                             type="button"
@@ -701,27 +615,19 @@ export default function VipSettingsPage() {
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             tabIndex={-1}
                           >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
 
-                        {/* رمز جدید */}
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="رمز عبور جدید"
                             value={passwordData.newPassword}
                             onChange={(e) =>
-                              setPasswordData({
-                                ...passwordData,
-                                newPassword: e.target.value,
-                              })
+                              setPasswordData({ ...passwordData, newPassword: e.target.value })
                             }
-                            className="pl-10"
+                            className="pl-10 rounded-xl"
                           />
                           <button
                             type="button"
@@ -729,27 +635,19 @@ export default function VipSettingsPage() {
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             tabIndex={-1}
                           >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
 
-                        {/* تکرار رمز جدید */}
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="تکرار رمز عبور جدید"
                             value={passwordData.confirmPassword}
                             onChange={(e) =>
-                              setPasswordData({
-                                ...passwordData,
-                                confirmPassword: e.target.value,
-                              })
+                              setPasswordData({ ...passwordData, confirmPassword: e.target.value })
                             }
-                            className="pl-10"
+                            className="pl-10 rounded-xl"
                           />
                           <button
                             type="button"
@@ -757,11 +655,7 @@ export default function VipSettingsPage() {
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             tabIndex={-1}
                           >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -770,20 +664,16 @@ export default function VipSettingsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-2"
+                          className="gap-2 rounded-xl"
                           onClick={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           {showPassword ? "مخفی کردن رمز" : "نمایش رمزها"}
                         </Button>
                         <Button
                           type="button"
                           onClick={() => setShowPasswordConfirmDialog(true)}
-                          className="gap-2"
+                          className="gap-2 rounded-xl"
                         >
                           <Save className="w-4 h-4" />
                           تغییر رمز عبور
@@ -801,11 +691,8 @@ export default function VipSettingsPage() {
                 </Card>
 
                 {/* ========== دیالوگ تأیید تغییر رمز عبور ========== */}
-                <Dialog
-                  open={showPasswordConfirmDialog}
-                  onOpenChange={setShowPasswordConfirmDialog}
-                >
-                  <DialogContent className="sm:max-w-md" dir="rtl">
+                <Dialog open={showPasswordConfirmDialog} onOpenChange={setShowPasswordConfirmDialog}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <Lock className="w-5 h-5 text-primary" />
@@ -814,15 +701,11 @@ export default function VipSettingsPage() {
                       <DialogDescription>
                         آیا مطمئن هستید می‌خواهید رمز عبور خود را تغییر دهید؟
                         <br />
-                        پس از تغییر رمز، برای ورود مجدد باید از رمز جدید استفاده
-                        کنید.
+                        پس از تغییر رمز، برای ورود مجدد باید از رمز جدید استفاده کنید.
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:gap-0">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowPasswordConfirmDialog(false)}
-                      >
+                      <Button variant="outline" onClick={() => setShowPasswordConfirmDialog(false)} className="rounded-xl">
                         انصراف
                       </Button>
                       <Button
@@ -831,7 +714,7 @@ export default function VipSettingsPage() {
                           handleChangePassword();
                           setShowPasswordConfirmDialog(false);
                         }}
-                        className="gap-2"
+                        className="gap-2 rounded-xl"
                       >
                         <Save className="w-4 h-4" />
                         بله، تغییر بده
@@ -841,11 +724,8 @@ export default function VipSettingsPage() {
                 </Dialog>
 
                 {/* ========== مودال موفقیت تغییر رمز ========== */}
-                <Dialog
-                  open={showSuccessModal}
-                  onOpenChange={setShowSuccessModal}
-                >
-                  <DialogContent className="sm:max-w-md" dir="rtl">
+                <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-green-600">
                         <svg
@@ -865,16 +745,11 @@ export default function VipSettingsPage() {
                         رمز عبور با موفقیت تغییر کرد
                       </DialogTitle>
                       <DialogDescription className="pt-2">
-                        رمز عبور جدید شما با موفقیت ذخیره شد. از این پس برای
-                        ورود از رمز جدید استفاده کنید.
+                        رمز عبور جدید شما با موفقیت ذخیره شد. از این پس برای ورود از رمز جدید استفاده کنید.
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:gap-0">
-                      <Button
-                        type="button"
-                        onClick={() => setShowSuccessModal(false)}
-                        className="gap-2"
-                      >
+                      <Button type="button" onClick={() => setShowSuccessModal(false)} className="gap-2 rounded-xl">
                         متوجه شدم
                       </Button>
                     </DialogFooter>
@@ -882,11 +757,8 @@ export default function VipSettingsPage() {
                 </Dialog>
 
                 {/* دیالوگ لغو نشست */}
-                <Dialog
-                  open={showRevokeDialog}
-                  onOpenChange={setShowRevokeDialog}
-                >
-                  <DialogContent className="sm:max-w-md" dir="rtl">
+                <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="rtl">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <LogOut className="w-5 h-5 text-destructive" />
@@ -902,19 +774,14 @@ export default function VipSettingsPage() {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:gap-0">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowRevokeDialog(false)}
-                      >
+                      <Button variant="outline" onClick={() => setShowRevokeDialog(false)} className="rounded-xl">
                         انصراف
                       </Button>
                       <Button
                         variant="destructive"
-                        onClick={() =>
-                          sessionToRevoke &&
-                          handleRevokeSession(sessionToRevoke._id)
-                        }
+                        onClick={() => sessionToRevoke && handleRevokeSession(sessionToRevoke._id)}
                         disabled={revokingSessionId === sessionToRevoke?._id}
+                        className="rounded-xl"
                       >
                         {revokingSessionId === sessionToRevoke?._id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />

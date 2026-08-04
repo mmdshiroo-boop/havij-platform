@@ -20,10 +20,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, MessageSquare, LogIn } from "lucide-react";
+import { RefreshCw, MessageSquare, LogIn, SearchX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { consultingApi } from "@/services/api/consulting.api";
+import { useAuth } from "@/app/context/AuthContext";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface ConsultingRequest {
   _id: string;
@@ -35,44 +38,57 @@ interface ConsultingRequest {
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   pending: {
     label: "در انتظار",
-    className: "bg-amber-100 text-amber-700 border-amber-300",
+    className:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   },
   approved: {
     label: "تأیید شده",
-    className: "bg-emerald-100 text-emerald-700 border-emerald-300",
+    className:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   },
   rejected: {
     label: "رد شده",
-    className: "bg-red-100 text-red-700 border-red-300",
+    className:
+      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
   },
   completed: {
     label: "تکمیل شده",
-    className: "bg-blue-100 text-blue-700 border-blue-300",
+    className:
+      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
   },
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
 };
 
 export function ConsultingList() {
   const [requests, setRequests] = useState<ConsultingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { user: authUser, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsAuthenticated(!!token);
-  }, []);
-
   const fetchRequests = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!authUser) {
       setLoading(false);
+      setRequests([]);
       return;
     }
 
     setLoading(true);
     try {
       const data = await consultingApi.getMyRequests(
-        statusFilter !== "all" ? statusFilter : undefined,
+        statusFilter !== "all" ? statusFilter : undefined
       );
       setRequests(Array.isArray(data) ? data : []);
     } catch (error: any) {
@@ -80,35 +96,40 @@ export function ConsultingList() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, isAuthenticated]);
+  }, [statusFilter, authUser]);
 
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
 
-  if (isAuthenticated === null) {
+  if (authLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Skeleton className="h-10 w-48" />
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authUser) {
     return (
       <div
-        className="flex flex-col items-center justify-center py-16 space-y-4"
+        className="flex flex-col items-center justify-center py-20 space-y-4 text-center"
         dir="rtl"
       >
-        <LogIn className="w-12 h-12 text-muted-foreground" />
-        <h2 className="text-xl font-bold">وارد حساب کاربری خود شوید</h2>
-        <p className="text-sm text-muted-foreground">
-          برای مشاهده درخواست‌های مشاوره، ابتدا باید وارد شوید.
+        <div className="p-4 rounded-full bg-muted">
+          <LogIn className="w-10 h-10 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-extrabold text-foreground">
+          وارد حساب کاربری خود شوید
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-md">
+          برای مشاهده درخواست‌های مشاوره، ابتدا باید وارد حساب کاربری خود شوید.
         </p>
         <Button
           onClick={() => router.push("/auth/login")}
-          className="rounded-xl"
+          className="rounded-xl gap-2 font-bold"
         >
+          <LogIn className="w-4 h-4" />
           ورود به حساب
         </Button>
       </div>
@@ -118,31 +139,44 @@ export function ConsultingList() {
   const formatDate = (date: string) => new Date(date).toLocaleString("fa-IR");
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+      dir="rtl"
+    >
+      {/* هدر */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-primary" />
-            درخواست‌های مشاوره من
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            وضعیت درخواست‌های مشاوره ثبت‌شده توسط شما
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight">
+              درخواست‌های مشاوره من
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              وضعیت درخواست‌های مشاوره ثبت‌شده توسط شما
+            </p>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={fetchRequests}
-          className="gap-1 rounded-xl"
+          className="gap-1 rounded-xl border-border/60 hover:bg-muted"
+          disabled={loading}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className={`w-4 h-4 ${loading && "animate-spin"}`} />
           بروزرسانی
         </Button>
       </div>
 
+      {/* فیلتر وضعیت */}
       <div className="flex items-center gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] rounded-xl h-10 bg-muted/40 border-border/60 focus:ring-primary">
             <SelectValue placeholder="همه وضعیت‌ها" />
           </SelectTrigger>
           <SelectContent>
@@ -155,15 +189,23 @@ export function ConsultingList() {
         </Select>
       </div>
 
-      <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
+      {/* محتوا: جدول در دسکتاپ، کارت در موبایل */}
+      <Card className="border border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* نسخهٔ دسکتاپ (جدول) */}
+          <div className="hidden sm:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="text-right">تاریخ</TableHead>
-                  <TableHead className="text-right">موضوع</TableHead>
-                  <TableHead className="text-right">وضعیت</TableHead>
+                  <TableHead className="text-right font-bold text-sm">
+                    تاریخ
+                  </TableHead>
+                  <TableHead className="text-right font-bold text-sm">
+                    موضوع
+                  </TableHead>
+                  <TableHead className="text-right font-bold text-sm">
+                    وضعیت
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,10 +227,16 @@ export function ConsultingList() {
                   <TableRow>
                     <TableCell
                       colSpan={3}
-                      className="text-center py-8 text-muted-foreground"
+                      className="text-center py-12 text-muted-foreground"
                     >
-                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      شما هنوز درخواست مشاوره‌ای ثبت نکرده‌اید.
+                      <div className="flex flex-col items-center gap-2">
+                        <SearchX className="w-8 h-8 opacity-40" />
+                        <span className="font-medium">
+                          {statusFilter !== "all"
+                            ? "درخواستی با این وضعیت یافت نشد."
+                            : "شما هنوز درخواست مشاوره‌ای ثبت نکرده‌اید."}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -205,7 +253,10 @@ export function ConsultingList() {
                         </TableCell>
                         <TableCell className="text-sm">
                           <Badge
-                            className={`text-xs border ${statusConfig.className}`}
+                            className={cn(
+                              "text-xs border font-bold rounded-md",
+                              statusConfig.className
+                            )}
                           >
                             {statusConfig.label}
                           </Badge>
@@ -217,8 +268,59 @@ export function ConsultingList() {
               </TableBody>
             </Table>
           </div>
+
+          {/* نسخهٔ موبایل (کارت‌های لیستی) */}
+          <div className="sm:hidden divide-y divide-border/40">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              ))
+            ) : requests.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground flex flex-col items-center gap-3">
+                <SearchX className="w-8 h-8 opacity-40" />
+                <span className="font-medium text-sm">
+                  {statusFilter !== "all"
+                    ? "درخواستی با این وضعیت یافت نشد."
+                    : "شما هنوز درخواست مشاوره‌ای ثبت نکرده‌اید."}
+                </span>
+              </div>
+            ) : (
+              requests.map((req) => {
+                const statusConfig =
+                  STATUS_BADGE[req.status] || STATUS_BADGE.pending;
+                return (
+                  <motion.div
+                    key={req._id}
+                    variants={itemVariants}
+                    className="p-4 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-bold text-foreground line-clamp-1">
+                        {req.subject}
+                      </p>
+                      <Badge
+                        className={cn(
+                          "text-xs border font-bold rounded-md shrink-0",
+                          statusConfig.className
+                        )}
+                      >
+                        {statusConfig.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(req.createdAt)}
+                    </p>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }

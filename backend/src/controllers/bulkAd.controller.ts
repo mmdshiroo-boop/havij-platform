@@ -14,14 +14,27 @@ import { detectCategory } from "../services/categoryMatcher.service";
 import { Category } from "../models";
 
 // ══════════════════════════════════════════════
-// ۰. تنظیمات واترمارک
+// ۰. تنظیمات واترمارک + کش
 // ══════════════════════════════════════════════
 
 const adsUploadDir = path.resolve(process.cwd(), "uploads", "ads");
 const watermarkPath = path.resolve(process.cwd(), "assets", "watermark.png");
 
+let cachedWatermark: Buffer | null = null;
+
+async function getWatermark(): Promise<Buffer> {
+  if (cachedWatermark) return cachedWatermark;
+  if (!fs.existsSync(watermarkPath)) {
+    throw new Error("فایل واترمارک یافت نشد");
+  }
+  cachedWatermark = await sharp(watermarkPath)
+    .resize(500, null, { fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  return cachedWatermark!;
+}
+
 // ══════════════════════════════════════════════
-// ۰.۱ ابزار اجرای موازی
+// ۰.۱ هم‌زمانی (concurrency pool)
 // ══════════════════════════════════════════════
 
 async function asyncPool<T>(
@@ -46,8 +59,11 @@ async function asyncPool<T>(
 }
 
 // ══════════════════════════════════════════════
-// ۰.۲ دانلود تصویر با تلاش مجدد و تایم‌اوت مناسب
+// ۰.۲ دانلود تصویر (بهینه‌شده)
 // ══════════════════════════════════════════════
+
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 10 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 10 });
 
 function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
   const maxRetries = 2;
@@ -71,22 +87,16 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
     const req = client.get(
       url,
       {
+        agent: url.startsWith("https") ? httpsAgent : httpAgent,
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Referer: referer,
-          Accept:
-            "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          Accept: "image/webp,image/*,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9,fa;q=0.8",
           "Accept-Encoding": "identity",
-          "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120"',
-          "sec-ch-ua-mobile": "?0",
-          "sec-ch-ua-platform": '"Windows"',
-          "Sec-Fetch-Dest": "image",
-          "Sec-Fetch-Mode": "no-cors",
-          "Sec-Fetch-Site": "cross-site",
         },
-        timeout: 30000,   // <-- افزایش به ۳۰ ثانیه
+        timeout: 20000,
       },
       (res) => {
         if (
@@ -103,10 +113,9 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
 
         if (!res.statusCode || res.statusCode !== 200) {
           if (attempt < maxRetries) {
-            console.warn(`تلاش مجدد ${attempt + 1} برای ${url} (HTTP ${res.statusCode})`);
             setTimeout(() => {
               downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-            }, 1000);
+            }, 500);
           } else {
             reject(new Error(`HTTP ${res.statusCode}`));
           }
@@ -118,10 +127,9 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
         res.on("end", () => resolve(Buffer.concat(chunks)));
         res.on("error", (err) => {
           if (attempt < maxRetries) {
-            console.warn(`تلاش مجدد ${attempt + 1} برای ${url} (error)`);
             setTimeout(() => {
               downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-            }, 1000);
+            }, 500);
           } else {
             reject(err);
           }
@@ -131,10 +139,9 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
 
     req.on("error", (err) => {
       if (attempt < maxRetries) {
-        console.warn(`تلاش مجدد ${attempt + 1} برای ${url} (error)`);
         setTimeout(() => {
           downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-        }, 1000);
+        }, 500);
       } else {
         reject(err);
       }
@@ -142,10 +149,9 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
     req.on("timeout", () => {
       req.destroy();
       if (attempt < maxRetries) {
-        console.warn(`timeout - تلاش مجدد ${attempt + 1} برای ${url}`);
         setTimeout(() => {
           downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-        }, 1000);
+        }, 500);
       } else {
         reject(new Error("timeout after retries"));
       }
@@ -153,9 +159,10 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
   });
 }
 
-/**
- * دانلود تصویر از URL + اعمال واترمارک + ذخیره محلی
- */
+// ══════════════════════════════════════════════
+// ۰.۳ دانلود + واترمارک + ذخیره (webp, resize)
+// ══════════════════════════════════════════════
+
 async function downloadAndWatermarkImage(
   imageUrl: string,
   adIndex: number,
@@ -165,74 +172,50 @@ async function downloadAndWatermarkImage(
     if (imageUrl.includes("/uploads/ads/")) return imageUrl;
     if (!imageUrl || typeof imageUrl !== "string") return imageUrl;
 
-    console.log(`⬇️ دانلود تصویر: ${imageUrl.substring(0, 80)}...`);
-
     const imageBuffer = await downloadImageBuffer(imageUrl);
-
-    if (!imageBuffer || imageBuffer.length < 1000) {
-      console.warn(`⚠️ تصویر خیلی کوچک یا خالی: ${imageUrl}`);
-      return imageUrl;   // URL اصلی حفظ می‌شود (برای مرورگرهای خارجی ممکن است کار کند)
-    }
-
-    let ext = ".jpg";
-    try {
-      const parsed = new URL(imageUrl);
-      const urlExt = path.extname(parsed.pathname).toLowerCase();
-      if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(urlExt)) {
-        ext = urlExt;
-      }
-    } catch {}
+    if (!imageBuffer || imageBuffer.length < 1000) return imageUrl;
 
     if (!fs.existsSync(adsUploadDir)) {
       fs.mkdirSync(adsUploadDir, { recursive: true });
     }
 
-    const filename = `bulk-${adIndex}-${imgIndex}-${Date.now()}${ext}`;
+    const filename = `bulk-${adIndex}-${imgIndex}-${Date.now()}.webp`;
     const filePath = path.join(adsUploadDir, filename);
 
-    if (fs.existsSync(watermarkPath)) {
-      const metadata = await sharp(imageBuffer).metadata();
-      const imgWidth = metadata.width || 800;
-      const wmWidth = Math.min(500, Math.max(150, Math.floor(imgWidth * 0.3)));
+    const wm = await getWatermark();
+    const metadata = await sharp(imageBuffer).metadata();
+    const imgWidth = metadata.width || 800;
 
-      const resizedWm = await sharp(watermarkPath)
-        .resize(wmWidth, null, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .toBuffer();
+    const wmWidth = Math.min(300, Math.max(100, Math.floor(imgWidth * 0.2)));
+    const resizedWm = await sharp(wm)
+      .resize(wmWidth, null, { fit: "inside", withoutEnlargement: true })
+      .toBuffer();
 
-      const finalBuffer = await sharp(imageBuffer)
-        .composite([{ input: resizedWm, gravity: "southwest" }])
-        .toBuffer();
-
-      fs.writeFileSync(filePath, finalBuffer);
-      console.log(
-        `✅ واترمارک bulk اعمال شد: ${filename} (اندازه واترمارک: ${wmWidth}px)`,
-      );
-    } else {
-      console.warn("⚠️ فایل واترمارک یافت نشد:", watermarkPath);
-      fs.writeFileSync(filePath, imageBuffer);
-    }
+    await sharp(imageBuffer)
+      .resize(1200, null, { fit: "inside", withoutEnlargement: true })
+      .composite([{ input: resizedWm, gravity: "southwest" }])
+      .webp({ quality: 80 })
+      .toFile(filePath);
 
     const port = process.env.PORT || 5001;
     const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
     return `${baseUrl}/uploads/ads/${filename}`;
   } catch (err: any) {
     console.error(`❌ خطا در پردازش تصویر: ${err?.message}`);
-    return imageUrl;   // حفظ URL اصلی در صورت خطا
+    return imageUrl;
   }
 }
 
-/**
- * پردازش تصاویر یک آگهی به صورت موازی (۲ تصویر هم‌زمان برای جلوگیری از مسدود شدن CDN)
- */
+// ══════════════════════════════════════════════
+// ۰.۴ پردازش همه تصاویر یک آگهی (۴ تایی هم‌زمان)
+// ══════════════════════════════════════════════
+
 async function processAdImages(
   images: string[],
   adIndex: number,
 ): Promise<string[]> {
   if (!Array.isArray(images) || images.length === 0) return images;
-  return asyncPool(2, images, (url, idx) =>
+  return asyncPool(4, images, (url, idx) =>
     downloadAndWatermarkImage(url, adIndex, idx),
   );
 }
@@ -266,10 +249,6 @@ function parseDivarAttributes(attributes: any[]): Record<string, string> {
   });
   return map;
 }
-
-// ══════════════════════════════════════════════
-// ۲. استخراج هوشمند قیمت
-// ══════════════════════════════════════════════
 
 function extractPriceFromText(text: string): number | null {
   if (!text) return null;
@@ -320,21 +299,14 @@ function detectPriceType(d: any, attrs: Record<string, string>): string {
 }
 
 function extractPrice(d: any, attrs: Record<string, string>): number {
-  // ۱. اگر rawJsonLd.price برای شیپور موجود باشد (دقیق‌ترین)
   if (d.rawJsonLd?.price && typeof d.rawJsonLd.price === 'number' && d.rawJsonLd.price > 0) {
     return d.rawJsonLd.price;
   }
-
-  // ۲. اگر d.price خود یک عدد بزرگ‌تر از صفر باشد
   if (typeof d.price === 'number' && d.price > 0) return d.price;
-
-  // ۳. اگر d.price رشته‌ای باشد و فقط شامل ارقام و جداکننده باشد
   if (typeof d.price === 'string' && /^[\d,،٫.\s]+$/.test(d.price.trim())) {
     const n = parseNumber(d.price);
     if (n > 0) return n;
   }
-
-  // ۴. استخراج از attributes (برای دیوار و موارد مشابه)
   const fromAttrs =
     parseNumber(attrs["قیمت کل"]) ||
     parseNumber(attrs["قیمت"]) ||
@@ -346,15 +318,10 @@ function extractPrice(d: any, attrs: Record<string, string>): number {
     parseNumber(attrs["روزهای عادی"]) ||
     parseNumber(attrs["آخر هفته"]);
   if (fromAttrs > 0) return fromAttrs;
-
-  // ۵. جستجوی قیمت در متن توضیحات و عنوان
   const fromDesc = extractPriceFromText(d.description);
   if (fromDesc) return fromDesc;
-
   const fromTitle = extractPriceFromText(d.title);
   if (fromTitle) return fromTitle;
-
-  // ۶. اگر هیچکدام یافت نشد
   return 0;
 }
 
@@ -366,10 +333,6 @@ function formatPrice(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)} هزار تومان`;
   return `${n.toLocaleString("fa-IR")} تومان`;
 }
-
-// ══════════════════════════════════════════════
-// ۳. اعتبارسنجی
-// ══════════════════════════════════════════════
 
 function isAdValid(payload: any): boolean {
   if (
@@ -388,7 +351,7 @@ function isAdValid(payload: any): boolean {
 }
 
 // ══════════════════════════════════════════════
-// ۴. نگاشت نهایی
+// ۲. نگاشت نهایی (با استخراج تصاویر از همه منابع)
 // ══════════════════════════════════════════════
 
 function mapToAdPayload(
@@ -424,7 +387,38 @@ function mapToAdPayload(
   let city = d.city || d.location || "نامشخص";
   let province = d.province || "";
   let district = d.district || "";
-  let images = Array.isArray(d.images) ? d.images : [];
+
+  // ── استخراج تصاویر از تمام منابع ──
+  let images: string[] = [];
+
+  // ۱. آرایه images در سطح data
+  if (Array.isArray(d.images) && d.images.length > 0) {
+    images = d.images;
+  }
+
+  // ۲. دیوار: sections.IMAGE → IMAGE_CAROUSEL → items[].image.url
+  if (images.length === 0 && d.rawData?.sections?.IMAGE) {
+    const imageSection = d.rawData.sections.IMAGE;
+    for (const widget of imageSection) {
+      if (widget.widgetType === "IMAGE_CAROUSEL" && widget.dto?.data?.items) {
+        for (const item of widget.dto.data.items) {
+          if (item.image?.url) {
+            images.push(item.image.url);
+          }
+        }
+      }
+    }
+  }
+
+  // ۳. شیپور قدیمی: rawMeta.image
+  if (images.length === 0 && d.rawMeta?.image) {
+    images = [d.rawMeta.image];
+  }
+
+  // ۴. fallback به فیلد image سطح بالا
+  if (images.length === 0 && d.image) {
+    images = Array.isArray(d.image) ? d.image : [d.image];
+  }
 
   let lat: number | undefined;
   let lng: number | undefined;
@@ -533,7 +527,7 @@ function mapToAdPayload(
 }
 
 // ══════════════════════════════════════════════
-// ۵. کنترلر اصلی (بدون تغییر)
+// ۳. کنترلر اصلی
 // ══════════════════════════════════════════════
 
 export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
@@ -579,7 +573,6 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
         .json({ success: false, message: "هیچ فایل JSON در ZIP یافت نشد" });
     }
 
-    // استخراج همه آیتم‌ها با مدیریت خطاهای JSON
     const allItems: { item: any; fileName: string; index: number }[] = [];
     for (const entry of jsonFiles) {
       try {
@@ -594,11 +587,9 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
           `❌ خطا در تجزیه فایل ${entry.entryName}:`,
           parseErr.message,
         );
-        // فایل مشکل‌دار نادیده گرفته می‌شود
       }
     }
 
-    // حذف فایل موقت
     try {
       fs.unlinkSync(tempPath);
     } catch {}
@@ -617,7 +608,6 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
       `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
       req.user.phone;
 
-    // پردازش کامل و دریافت نتایج
     const results = await processAndSaveAds(
       allItems,
       userId.toString(),
@@ -642,7 +632,7 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
 };
 
 // ══════════════════════════════════════════════
-// ۶. پردازش نهایی آگهی‌ها (نسخه موازی با ۳ آگهی هم‌زمان)
+// ۴. پردازش نهایی (۴ آگهی هم‌زمان)
 // ══════════════════════════════════════════════
 
 async function processAndSaveAds(
@@ -660,11 +650,9 @@ async function processAndSaveAds(
     details: [] as any[],
   };
 
-  // کاهش همزمانی به ۳ آگهی
-  await asyncPool(3, items, async ({ item, fileName, index }) => {
+  await asyncPool(4, items, async ({ item, fileName, index }) => {
     const identifier = `${fileName}[${index}]`;
     try {
-      // ۱. تشخیص دسته‌بندی
       let categoryId: string | undefined;
       try {
         const detected = await detectCategory(item);
@@ -679,7 +667,6 @@ async function processAndSaveAds(
         if (fallbackCategory) categoryId = fallbackCategory._id.toString();
       }
 
-      // ۲. ساخت payload
       const adPayload = mapToAdPayload(
         item,
         userId,
@@ -688,7 +675,6 @@ async function processAndSaveAds(
         expertName,
       );
 
-      // ۳. اعتبارسنجی
       if (!isAdValid(adPayload)) {
         results.skipped++;
         results.details.push({
@@ -699,11 +685,7 @@ async function processAndSaveAds(
         return;
       }
 
-      // ۴. واترمارک تصاویر (موازی داخلی با ۲ تصویر همزمان)
       if (Array.isArray(adPayload.images) && adPayload.images.length > 0) {
-        console.log(
-          `🖼️ پردازش ${adPayload.images.length} تصویر برای: ${adPayload.title.substring(0, 40)}`,
-        );
         adPayload.images = await processAdImages(adPayload.images, index);
         const watermarkedCount = adPayload.images.filter((img: string) =>
           img.includes("/uploads/ads/bulk-"),
@@ -711,11 +693,9 @@ async function processAndSaveAds(
         results.watermarkApplied += watermarkedCount;
       }
 
-      // ۵. ذخیره آگهی
       const ad = new Ad(adPayload);
       await ad.save();
 
-      // ۶. لاگ
       await createAuditLog({
         userId,
         action: AuditAction.AD_CREATED,
@@ -737,7 +717,6 @@ async function processAndSaveAds(
     }
   });
 
-  // ۷. ارسال نوتیفیکیشن نهایی به کارشناس
   if (results.success > 0) {
     await sendNotificationToUser(
       userId,

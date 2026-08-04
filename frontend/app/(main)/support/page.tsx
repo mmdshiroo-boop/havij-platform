@@ -17,7 +17,10 @@ import {
   ShieldCheck,
   Star,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const faqs = [
   {
@@ -50,6 +53,7 @@ export default function SupportPage() {
     priority: "medium",
   });
   const [sending, setSending] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,20 +75,23 @@ export default function SupportPage() {
   };
 
   return (
-    <div
-      className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12"
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10"
       dir="rtl"
     >
       {/* هدر */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold border border-primary/20">
           <ShieldCheck className="w-4 h-4" />
           پشتیبانی ویژه
         </div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
           ما همیشه کنار شما هستیم
         </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+        <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
           هر سوال، مشکل یا پیشنهادی دارید، از طریق فرم زیر با ما در میان
           بگذارید. تیم پشتیبانی معمولاً در کمتر از ۲۴ ساعت پاسخگوی شما خواهد
           بود.
@@ -95,22 +102,29 @@ export default function SupportPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* فرم تیکت */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="p-6 sm:p-8 rounded-2xl bg-card border border-border/40 shadow-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-6 sm:p-8 rounded-3xl bg-card/80 backdrop-blur-xl border border-border/60 shadow-xl shadow-black/5 dark:shadow-white/5"
+          >
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-primary/10 rounded-xl">
+              <div className="p-2.5 bg-primary/10 rounded-xl">
                 <MessageCircle className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h2 className="font-extrabold text-xl">ثبت تیکت جدید</h2>
-                <p className="text-xs text-muted-foreground">
+                <h2 className="font-extrabold text-xl text-foreground">
+                  ثبت تیکت جدید
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   مشکل خود را شرح دهید تا پیگیری کنیم
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold mb-1.5 block">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">
                   موضوع تیکت
                 </label>
                 <input
@@ -120,11 +134,11 @@ export default function SupportPage() {
                     setForm({ ...form, subject: e.target.value })
                   }
                   placeholder="عنوان مشکل یا درخواست..."
-                  className="w-full rounded-xl border border-border/40 bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full h-10 rounded-xl border border-border/60 bg-muted/40 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
-              <div>
-                <label className="text-sm font-semibold mb-1.5 block">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">
                   اولویت
                 </label>
                 <select
@@ -132,7 +146,7 @@ export default function SupportPage() {
                   onChange={(e) =>
                     setForm({ ...form, priority: e.target.value })
                   }
-                  className="w-full rounded-xl border border-border/40 bg-background px-4 py-2.5 text-sm"
+                  className="w-full h-10 rounded-xl border border-border/60 bg-muted/40 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 >
                   <option value="low">کم</option>
                   <option value="medium">متوسط</option>
@@ -140,8 +154,8 @@ export default function SupportPage() {
                   <option value="urgent">فوری</option>
                 </select>
               </div>
-              <div>
-                <label className="text-sm font-semibold mb-1.5 block">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-foreground">
                   توضیحات
                 </label>
                 <textarea
@@ -151,13 +165,13 @@ export default function SupportPage() {
                     setForm({ ...form, message: e.target.value })
                   }
                   placeholder="لطفاً مشکل خود را کامل توضیح دهید..."
-                  className="w-full rounded-xl border border-border/40 bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  className="w-full rounded-xl border border-border/60 bg-muted/40 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition-all"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={sending}
-                className="gap-2 rounded-xl w-full sm:w-auto"
+                className="gap-2 rounded-xl w-full sm:w-auto h-10 px-6 font-bold shadow-md shadow-primary/10"
               >
                 {sending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -167,11 +181,14 @@ export default function SupportPage() {
                 {sending ? "در حال ارسال..." : "ارسال تیکت"}
               </Button>
             </form>
-          </div>
+          </motion.div>
 
           <div className="text-center">
             <Link href="/panel/user/tickets">
-              <Button variant="outline" className="gap-2 rounded-xl">
+              <Button
+                variant="outline"
+                className="gap-2 rounded-xl border-border/60 hover:bg-muted"
+              >
                 <ArrowLeft className="w-4 h-4" />
                 مشاهده تیکت‌های قبلی
               </Button>
@@ -181,8 +198,14 @@ export default function SupportPage() {
 
         {/* راه‌های ارتباطی و سوالات */}
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-card border border-border/40 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-lg flex items-center gap-2">
+          {/* تماس */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="p-6 rounded-3xl bg-card/80 backdrop-blur-xl border border-border/60 shadow-xl shadow-black/5 dark:shadow-white/5 space-y-4"
+          >
+            <h3 className="font-extrabold text-lg flex items-center gap-2 text-foreground">
               <Phone className="w-5 h-5 text-primary" />
               راه‌های ارتباطی
             </h3>
@@ -190,45 +213,63 @@ export default function SupportPage() {
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-muted-foreground">تلفن:</span>
-                <span className="font-bold">۰۲۱-۱۲۳۴۵۶۷۸</span>
+                <span className="font-bold text-foreground">۰۲۱-۱۲۳۴۵۶۷۸</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-muted-foreground">ایمیل:</span>
-                <span className="font-bold">support@yourplatform.ir</span>
+                <span className="font-bold text-foreground">
+                  support@yourplatform.ir
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-muted-foreground">ساعت پاسخگویی:</span>
-                <span className="font-bold">۹ صبح تا ۱۸</span>
+                <span className="font-bold text-foreground">۹ صبح تا ۱۸</span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-6 rounded-2xl bg-card border border-border/40 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-lg flex items-center gap-2">
+          {/* سوالات متداول */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="p-6 rounded-3xl bg-card/80 backdrop-blur-xl border border-border/60 shadow-xl shadow-black/5 dark:shadow-white/5 space-y-4"
+          >
+            <h3 className="font-extrabold text-lg flex items-center gap-2 text-foreground">
               <HelpCircle className="w-5 h-5 text-primary" />
               سوالات متداول
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {faqs.map((faq, idx) => (
-                <details
+                <div
                   key={idx}
-                  className="group border border-border/30 rounded-xl p-3 [&>summary::-webkit-details-marker]:hidden"
+                  className="border border-border/60 rounded-xl overflow-hidden"
                 >
-                  <summary className="cursor-pointer list-none text-sm font-bold flex items-center justify-between">
-                    {faq.q}
-                    <Star className="w-4 h-4 text-primary/50 group-open:rotate-180 transition-transform" />
-                  </summary>
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                    {faq.a}
-                  </p>
-                </details>
+                  <button
+                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <span className="text-right">{faq.q}</span>
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 text-muted-foreground transition-transform duration-200",
+                        openFaq === idx && "rotate-180"
+                      )}
+                    />
+                  </button>
+                  {openFaq === idx && (
+                    <div className="px-4 pb-3 pt-0 text-xs text-muted-foreground leading-relaxed">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

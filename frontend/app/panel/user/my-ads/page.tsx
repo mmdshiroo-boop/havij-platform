@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
 
 const ITEMS_PER_PAGE = 10;
 

@@ -1,3 +1,4 @@
+// components/panel/ReportModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -22,6 +23,7 @@ import {
 import { toast } from "sonner";
 import apiClient from "@/services/api/client";
 import { AlertTriangle } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ReportModalProps {
   open: boolean;
@@ -87,7 +89,7 @@ export function ReportModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md" dir="rtl">
+      <DialogContent className="sm:max-w-md rounded-2xl border-border/50" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="w-5 h-5" />
@@ -100,14 +102,18 @@ export function ReportModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4 py-2"
+        >
           <div className="space-y-1.5">
             <Label htmlFor="report-type">نوع تخلف</Label>
             <Select onValueChange={setType} value={type}>
-              <SelectTrigger id="report-type">
+              <SelectTrigger id="report-type" className="rounded-xl h-10 bg-muted/40 border-border/60">
                 <SelectValue placeholder="انتخاب نوع تخلف" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl">
                 {Object.entries(REPORT_TYPES).map(([key, label]) => (
                   <SelectItem key={key} value={key}>
                     {label}
@@ -126,21 +132,23 @@ export function ReportModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               maxLength={1000}
+              className="rounded-xl resize-none bg-muted/40 border-border/60"
             />
             <p className="text-xs text-muted-foreground text-left">
               {description.length}/1000
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} className="rounded-xl">
             انصراف
           </Button>
           <Button
             variant="destructive"
             onClick={handleSubmit}
             disabled={loading}
+            className="rounded-xl gap-1"
           >
             {loading ? "در حال ارسال..." : "ارسال گزارش"}
           </Button>

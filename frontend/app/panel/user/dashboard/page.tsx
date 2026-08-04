@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import apiClient from "@/services/api/client";
 import { toast } from "sonner";
+import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی تصاویر
 
 // ─── TYPES ────────────────────────────────
 interface Ad {
@@ -78,35 +79,21 @@ const formatDate = (date: string) =>
     day: "numeric",
   });
 
-const getImageUrl = (images?: string[]) => {
-  if (!images || images.length === 0 || !images[0]) return null;
-  const img = images[0];
-  if (
-    img.startsWith("http://") ||
-    img.startsWith("https://") ||
-    img.startsWith("data:")
-  ) {
-    return img;
-  }
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
-    "http://localhost:5001";
-  return `${baseUrl}${img.startsWith("/") ? "" : "/"}${img}`;
-};
+// ❌ تابع getImageUrl محلی حذف شد — از helper مرکزی استفاده می‌کنیم
 
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-} as const;
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring" as const, stiffness: 260, damping: 20 },
+    transition: { type: "spring", stiffness: 260, damping: 20 },
   },
-} as const;
+};
 
 // ─── CUSTOM TOOLTIP FOR RECHARTS ──────────
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -142,7 +129,6 @@ export default function UserDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const generateChartData = (ads: Ad[]) => {
-    // تولید لیست ۷ روز اخیر بر اساس تاریخ تقویمی
     const days: { name: string; dateStr: string; views: number }[] = [];
     const today = new Date();
 
@@ -172,7 +158,6 @@ export default function UserDashboardPage() {
     const totalViews = ads.reduce((sum, ad) => sum + (ad.views || 0), 0);
     const hasChartViews = days.some((d) => d.views > 0);
 
-    // اگر آگهی‌ها در ۷ روز اخیر ثبت نشده بودند اما کل بازدید وجود داشت، روند هوشمند هفته نمایش داده می‌شود
     if (!hasChartViews && totalViews > 0) {
       const daysOfWeek = [
         "شنبه",
@@ -446,7 +431,7 @@ export default function UserDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* آخرین آگهی‌ها به همراه تصویر */}
+      {/* آخرین آگهی‌ها */}
       <Card className="border-border/60 rounded-2xl overflow-hidden shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-muted/10 py-3.5 px-4">
           <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -471,7 +456,7 @@ export default function UserDashboardPage() {
           ) : (
             <div className="space-y-3">
               {recentAds.map((ad) => {
-                const imgUrl = getImageUrl(ad.images);
+                const imgUrl = getImageUrl(ad.images?.[0]); // ✅ helper مرکزی
                 return (
                   <div
                     key={ad._id}
@@ -486,8 +471,8 @@ export default function UserDashboardPage() {
                             alt={ad.title}
                             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
+                              (e.target as HTMLImageElement).src =
+                                "/images/user.webp";
                             }}
                           />
                         ) : (

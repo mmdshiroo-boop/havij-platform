@@ -1,5 +1,4 @@
-// frontend/app/(main)/panel/expert/pending-ads/[id]/page.tsx
-
+// app/panel/expert/pending/[id]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,9 +18,19 @@ import {
   Home,
   ImageIcon,
   ArrowLeft,
+  Loader2,
+  Send,
 } from "lucide-react";
-
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import { expertApi } from "@/services/api/expert.api";
+import { getImageUrl } from "@/lib/getImageUrl";
+import { cn } from "@/lib/utils";
 
 export default function ExpertReviewAdPage() {
   const params = useParams();
@@ -32,50 +41,35 @@ export default function ExpertReviewAdPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
 
   useEffect(() => {
-    if (adId) {
-      fetchAdDetails();
-    }
+    if (adId) fetchAdDetails();
   }, [adId]);
 
   const fetchAdDetails = async () => {
     try {
       setLoading(true);
       const response = await expertApi.getPendingAdById(adId);
-      console.log("✅ Ad data received:", response);
-
-      // اصلاح: داده‌ها می‌توانند در response.data یا مستقیماً در response باشند
       let adData = response.data || response;
-
-      // اگر response خودش یک آبجکت با success و data داشت
-      if (response.success && response.data) {
-        adData = response.data;
-      }
-
+      if (response.success && response.data) adData = response.data;
       setAd(adData);
     } catch (error: any) {
-      console.error("❌ Error fetching ad:", error);
-      toast.error(
-        error?.response?.data?.message || "خطا در دریافت اطلاعات آگهی",
-      );
-      router.push("/panel/expert/pending-ads");
+      toast.error(error?.response?.data?.message || "خطا در دریافت اطلاعات");
+      router.push("/panel/expert/pending");
     } finally {
       setLoading(false);
     }
   };
 
   const handleApprove = async () => {
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       await expertApi.approveAd(adId);
-      toast.success("✅ آگهی با موفقیت تایید شد");
-      router.push("/panel/expert/pending-ads");
+      toast.success("✅ آگهی با موفقیت تأیید شد");
+      router.push("/panel/expert/pending");
     } catch (error: any) {
-      console.error("❌ Error approving ad:", error);
-      toast.error(error?.response?.data?.message || "خطا در تایید آگهی");
+      toast.error(error?.response?.data?.message || "خطا در تأیید آگهی");
     } finally {
       setSubmitting(false);
     }
@@ -86,25 +80,21 @@ export default function ExpertReviewAdPage() {
       toast.error("لطفاً دلیل رد آگهی را وارد کنید");
       return;
     }
-
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       await expertApi.rejectAd(adId, rejectionReason);
       toast.success("❌ آگهی با موفقیت رد شد");
-      router.push("/panel/expert/pending-ads");
+      router.push("/panel/expert/pending");
     } catch (error: any) {
-      console.error("❌ Error rejecting ad:", error);
       toast.error(error?.response?.data?.message || "خطا در رد آگهی");
     } finally {
       setSubmitting(false);
-      setShowRejectModal(false);
-      setRejectionReason("");
     }
   };
 
   const formatPrice = (price?: number) => {
     if (!price && price !== 0) return "نامشخص";
-    return new Intl.NumberFormat("fa-IR").format(price);
+    return new Intl.NumberFormat("fa-IR").format(price) + " تومان";
   };
 
   const formatDate = (date?: string) => {
@@ -112,326 +102,247 @@ export default function ExpertReviewAdPage() {
     return new Date(date).toLocaleDateString("fa-IR");
   };
 
-  // تابع کمکی برای نمایش آدرس
   const getLocationText = () => {
     if (!ad) return "نامشخص";
-
-    // اگر location object داریم
     if (ad.location) {
       let text = "";
       if (ad.location.province) text += ad.location.province;
       if (ad.location.city) text += (text ? "، " : "") + ad.location.city;
-      if (ad.location.district)
-        text += (text ? " - " : "") + ad.location.district;
+      if (ad.location.district) text += (text ? " - " : "") + ad.location.district;
       if (text) return text;
     }
-
-    // فیلدهای مستقیم
-    if (ad.city) return ad.city;
-    if (ad.province) return ad.province;
-    if (ad.address) return ad.address;
-
-    return "موقعیت نامشخص";
+    return ad.city || ad.province || ad.address || "موقعیت نامشخص";
   };
 
-  // دریافت نام کاربر
   const getUserName = () => {
     if (!ad) return "نامشخص";
-    if (ad.userId?.firstName)
-      return `${ad.userId.firstName} ${ad.userId.lastName || ""}`;
-    if (ad.user?.firstName)
-      return `${ad.user.firstName} ${ad.user.lastName || ""}`;
-    if (ad.fullName) return ad.fullName;
-    if (ad.contactName) return ad.contactName;
-    return "نامشخص";
+    if (ad.userId?.firstName) return `${ad.userId.firstName} ${ad.userId.lastName || ""}`;
+    if (ad.user?.firstName) return `${ad.user.firstName} ${ad.user.lastName || ""}`;
+    return ad.contactName || ad.fullName || "نامشخص";
   };
 
-  // دریافت شماره تماس
   const getUserPhone = () => {
     if (!ad) return null;
-    return (
-      ad.phoneNumber ||
-      ad.userId?.phone ||
-      ad.user?.phone ||
-      ad.contactPhone ||
-      null
-    );
+    return ad.userId?.phone || ad.user?.phone || ad.contactPhone || ad.phoneNumber || null;
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-6 px-3 sm:px-6 py-8" dir="rtl">
+        <Skeleton className="h-10 w-48 rounded-xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-40 rounded-2xl" />
+          </div>
+          <Skeleton className="h-80 rounded-2xl" />
+        </div>
       </div>
     );
   }
 
   if (!ad) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="mx-auto h-16 w-16 text-yellow-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-700 mb-2">آگهی یافت نشد</h2>
-        <p className="text-gray-500 mb-6">
-          آگهی مورد نظر وجود ندارد یا حذف شده است
-        </p>
-        <button
-          onClick={() => router.back()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          بازگشت
-        </button>
+      <div className="flex flex-col items-center justify-center py-20 gap-4" dir="rtl">
+        <AlertTriangle className="w-16 h-16 text-yellow-500" />
+        <h2 className="text-xl font-bold">آگهی یافت نشد</h2>
+        <Button onClick={() => router.back()} className="gap-2 rounded-xl">
+          <ArrowLeft className="w-4 h-4" /> بازگشت
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6" dir="rtl">
-      {/* دکمه بازگشت */}
-      <button
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
+      {/* Back button */}
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        className="gap-2 rounded-xl border-border/60 hover:bg-muted"
       >
-        <ArrowLeft className="w-5 h-5" />
-        <span>بازگشت به لیست آگهی‌ها</span>
-      </button>
+        <ArrowLeft className="w-4 h-4" /> بازگشت به لیست
+      </Button>
 
-      {/* هدر */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex justify-between items-start flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-5 h-5 text-yellow-500" />
-              <span className="text-sm text-gray-500">
-                در انتظار بررسی • ثبت شده در {formatDate(ad.createdAt)}
+      {/* Header card */}
+      <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+        <CardContent className="p-5 flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-5 h-5 text-amber-500" />
+              <span className="text-sm text-muted-foreground">
+                در انتظار بررسی • {formatDate(ad.createdAt)}
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground mb-2">
               {ad.title || "بدون عنوان"}
             </h1>
-            <div className="flex flex-wrap items-center gap-4 text-gray-600">
-              <div className="flex items-center gap-1">
-                <Tag className="w-4 h-4" />
-                <span>{ad.category?.name || "دسته‌بندی نشده"}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span>{getLocationText()}</span>
-              </div>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Tag className="w-4 h-4 text-primary/70" />
+                {ad.category?.name || "دسته‌بندی نشده"}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-4 h-4 text-primary/70" />
+                {getLocationText()}
+              </span>
             </div>
           </div>
-          <div className="text-2xl font-bold text-blue-600">
-            {formatPrice(ad.price)} تومان
-          </div>
-        </div>
-      </div>
+          <div className="text-2xl font-black text-primary">{formatPrice(ad.price)}</div>
+        </CardContent>
+      </Card>
 
-      {/* دو ستونه */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ستون راست - جزئیات */}
+        {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* تصاویر */}
+          {/* Images */}
           {ad.images && ad.images.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5" />
-                تصاویر آگهی
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {ad.images.map((image: string, index: number) => (
-                  <div
-                    key={index}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
-                  >
-                    <img
-                      src={image}
-                      alt={`تصویر ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* توضیحات */}
-          {ad.description && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                توضیحات
-              </h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {ad.description}
-              </p>
-            </div>
-          )}
-
-          {/* جزئیات ملک */}
-          {ad.propertyDetails && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Home className="w-5 h-5" />
-                جزئیات ملک
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {ad.propertyDetails.area && (
-                  <div>
-                    <span className="text-sm text-gray-500">متراژ:</span>
-                    <p className="font-medium">
-                      {ad.propertyDetails.area} متر مربع
-                    </p>
-                  </div>
-                )}
-                {ad.propertyDetails.rooms && (
-                  <div>
-                    <span className="text-sm text-gray-500">تعداد اتاق:</span>
-                    <p className="font-medium">{ad.propertyDetails.rooms}</p>
-                  </div>
-                )}
-                {ad.propertyDetails.propertyType && (
-                  <div>
-                    <span className="text-sm text-gray-500">نوع ملک:</span>
-                    <p className="font-medium">
-                      {ad.propertyDetails.propertyType}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ستون چپ - عملیات */}
-        <div className="space-y-6">
-          {/* کارت اقدامات */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              اقدامات کارشناسی
-            </h2>
-
-            <div className="space-y-4">
-              <button
-                onClick={handleApprove}
-                disabled={submitting}
-                className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <CheckCircle className="w-5 h-5" />
-                {submitting ? "در حال تایید..." : "تایید آگهی"}
-              </button>
-
-              <button
-                onClick={() => setShowRejectModal(true)}
-                disabled={submitting}
-                className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <XCircle className="w-5 h-5" />
-                رد آگهی
-              </button>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                یادداشت کارشناسی (اختیاری)
-              </label>
-              <textarea
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="یادداشت‌های خود را وارد کنید..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* اطلاعات آگهی دهنده */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5" />
-              اطلاعات آگهی‌دهنده
-            </h2>
-
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-500">
-                  نام و نام خانوادگی:
-                </span>
-                <p className="font-medium">{getUserName()}</p>
-              </div>
-
-              <div>
-                <span className="text-sm text-gray-500">شماره تماس:</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="font-medium text-left">
-                    {getUserPhone() || "نامشخص"}
-                  </p>
-                  {getUserPhone() && (
-                    <button
-                      onClick={() =>
-                        (window.location.href = `tel:${getUserPhone()}`)
-                      }
-                      className="p-1 text-blue-600 hover:text-blue-700"
+            <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-5">
+                <h2 className="text-base font-bold flex items-center gap-2 mb-4">
+                  <ImageIcon className="w-5 h-5 text-primary" /> تصاویر آگهی
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {ad.images.map((image: string, index: number) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-xl overflow-hidden bg-muted border border-border/30"
                     >
-                      <Phone className="w-4 h-4" />
-                    </button>
+                      <img
+                        src={getImageUrl(image)}
+                        alt={`تصویر ${index + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/user.webp"; }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Description */}
+          {ad.description && (
+            <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-5">
+                <h2 className="text-base font-bold flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-primary" /> توضیحات
+                </h2>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground bg-muted/20 rounded-xl p-4 border border-border/30">
+                  {ad.description}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Property details */}
+          {ad.propertyDetails && (
+            <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-5">
+                <h2 className="text-base font-bold flex items-center gap-2 mb-4">
+                  <Home className="w-5 h-5 text-primary" /> جزئیات ملک
+                </h2>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {ad.propertyDetails.area && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">متراژ</p>
+                      <p className="font-bold">{ad.propertyDetails.area} متر مربع</p>
+                    </div>
+                  )}
+                  {ad.propertyDetails.rooms && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">تعداد اتاق</p>
+                      <p className="font-bold">{ad.propertyDetails.rooms}</p>
+                    </div>
+                  )}
+                  {ad.propertyDetails.propertyType && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">نوع ملک</p>
+                      <p className="font-bold">{ad.propertyDetails.propertyType}</p>
+                    </div>
                   )}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-              <div>
-                <span className="text-sm text-gray-500">آمار بازدید:</span>
-                <div className="flex items-center gap-1 mt-1">
-                  <Eye className="w-4 h-4 text-gray-400" />
-                  <p className="font-medium">{ad.views || 0} بازدید</p>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Actions */}
+          <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+            <CardContent className="p-5 space-y-4">
+              <h2 className="text-base font-bold">اقدامات کارشناسی</h2>
+
+              <Button
+                onClick={handleApprove}
+                disabled={submitting}
+                className="w-full gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-md shadow-emerald-500/20"
+              >
+                <CheckCircle className="w-5 h-5" />
+                {submitting ? "در حال تأیید..." : "تأیید آگهی"}
+              </Button>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-bold">دلیل رد (در صورت نیاز)</Label>
+                <Textarea
+                  placeholder="دلیل رد آگهی..."
+                  rows={3}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="rounded-xl bg-muted/40 border-border/60 focus:ring-primary resize-none"
+                />
+                <Button
+                  variant="destructive"
+                  onClick={handleReject}
+                  disabled={submitting || !rejectionReason.trim()}
+                  className="w-full gap-2 rounded-xl font-bold"
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-5 h-5" />}
+                  رد آگهی
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* User info */}
+          <Card className="border-border/60 shadow-sm rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden">
+            <CardContent className="p-5 space-y-3">
+              <h2 className="text-base font-bold flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" /> اطلاعات آگهی‌دهنده
+              </h2>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">نام:</span>
+                  <span className="font-bold">{getUserName()}</span>
+                </div>
+                {getUserPhone() && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">تلفن:</span>
+                    <a href={`tel:${getUserPhone()}`} className="font-bold text-primary hover:underline flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      {getUserPhone()}
+                    </a>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">بازدید:</span>
+                  <span className="font-bold flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5 text-primary/70" />
+                    {ad.views || 0}
+                  </span>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* مودال رد آگهی */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6" dir="rtl">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-6 h-6 text-red-500" />
-              رد آگهی
-            </h2>
-
-            <p className="text-gray-700 mb-4">
-              لطفاً دلیل رد این آگهی را وارد کنید:
-            </p>
-
-            <textarea
-              rows={4}
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4"
-              placeholder="مثال: اطلاعات ناقص، قیمت نامعقول، تخلف از قوانین..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              autoFocus
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleReject}
-                disabled={submitting || !rejectionReason.trim()}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {submitting ? "در حال ثبت..." : "رد آگهی"}
-              </button>
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason("");
-                }}
-                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                انصراف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 }

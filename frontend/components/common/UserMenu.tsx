@@ -40,8 +40,7 @@ import {
   Sun,
 } from "lucide-react";
 
-// ═══════════════ منوها دقیقاً مطابق نسخه قبلی شما ═══════════════
-
+// ═══════════════ منوها (کامل، مشابه قبل) ═══════════════
 const defaultMenuItems: Array<{
   icon: any;
   label: string;
@@ -127,7 +126,7 @@ const expertMenuItems: Array<{
   {
     icon: Clock,
     label: "آگهی‌های در انتظار بررسی",
-    href: "/panel/expert/pending-ads",
+    href: "/panel/expert/pending",
   },
   { icon: Flag, label: "گزارشات تخلف کاربران", href: "/panel/expert/reports" },
   { icon: Flag, label: "گزارشات تخلف من", href: "/panel/expert/reports-my" },
@@ -246,7 +245,6 @@ const superAdminMenuItems: Array<{
   },
 ];
 
-// ═══════════════ کامپوننت اصلی UserMenu ═══════════════
 interface UserMenuProps {
   onLogout?: () => void;
   customMenuItems?: Array<{
@@ -265,7 +263,6 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   const [isDark, setIsDark] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // همگام‌سازی با تم سیستم
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
@@ -275,7 +272,6 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
     setIsDark(!isDark);
   };
 
-  // بستن منو با کلیک بیرون
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -315,6 +311,7 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
   };
 
   const role = user?.role || "user";
+  const roleForUrl = role.replace(/_/g, "-"); // super_admin -> super-admin
 
   const roleBadge = () => {
     switch (role) {
@@ -367,25 +364,19 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
     customMenuItems ||
     (() => {
       switch (role) {
-        case "vip":
-          return vipMenuItems;
-        case "agent":
-          return agentMenuItems;
-        case "developer":
-          return developerMenuItems;
-        case "expert":
-          return expertMenuItems;
-        case "admin":
-          return adminMenuItems;
-        case "super_admin":
-          return superAdminMenuItems;
-        default:
-          return defaultMenuItems;
+        case "vip": return vipMenuItems;
+        case "agent": return agentMenuItems;
+        case "developer": return developerMenuItems;
+        case "expert": return expertMenuItems;
+        case "admin": return adminMenuItems;
+        case "super_admin": return superAdminMenuItems;
+        default: return defaultMenuItems;
       }
     })();
 
-  // منبع تصویر آواتار (همان helper مرکزی که در صفحه پروفایل استفاده می‌شود)
-const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
+  // منبع تصویر آواتار: تصویر کاربر یا تصویر پیش‌فرض
+  const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
+
   if (!user) {
     return (
       <Button
@@ -410,6 +401,7 @@ const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
         <Avatar className="h-full w-full">
           <AvatarImage src={avatarSrc} className="object-cover" />
           <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm md:text-base">
+            {/* در صورت خطای بارگذاری تصویر پیش‌فرض، حروف نمایش داده می‌شود */}
             {getInitials()}
           </AvatarFallback>
         </Avatar>
@@ -445,7 +437,7 @@ const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
               <div className="mt-3 flex justify-between items-center">
                 {roleBadge()}
                 <Link
-                  href={`/panel/${role}/profile`}
+                  href={`/panel/${roleForUrl}/profile`}
                   onClick={() => setOpen(false)}
                   className="text-xs font-medium text-primary hover:underline"
                 >
@@ -458,13 +450,18 @@ const avatarSrc = user?.avatar ? getImageUrl(user.avatar) : "/images/user.webp";
             <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
               {menuItems.map((item, index) => {
                 const Icon = item.icon;
+                // جایگزینی _ با - در href برای اطمینان (فقط super_admin تغییر می‌کند)
+                const href = item.href.replace(
+                  /\/panel\/super_admin/,
+                  "/panel/super-admin"
+                );
                 return (
                   <div key={item.label}>
                     {item.divider && index !== 0 && (
                       <div className="my-1 border-t border-border/30" />
                     )}
                     <Link
-                      href={item.href}
+                      href={href}
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-muted/60 transition-colors"
                     >

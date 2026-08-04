@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -21,10 +22,31 @@ import {
   ChevronLeft,
   ImagePlus,
   X,
-  Upload,
+  Save,
+  Info,
+  MapPin,
+  Phone,
+  Home,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import apiClient from "@/services/api/client";
+import { getImageUrl } from "@/lib/getImageUrl";
+
+interface Category {
+  _id: string;
+  name: string;
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 export default function EditPropertyPage() {
   const params = useParams();
@@ -32,6 +54,7 @@ export default function EditPropertyPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -48,13 +71,16 @@ export default function EditPropertyPage() {
   });
 
   useEffect(() => {
-    fetchProperty();
+    fetchData();
   }, []);
 
-  const fetchProperty = async () => {
+  const fetchData = async () => {
     try {
-      const response = await apiClient.get(`/properties/${params.id}`);
-      const property = response.data.data;
+      const [propertyRes, categoriesRes] = await Promise.all([
+        apiClient.get(`/properties/${params.id}`),
+        apiClient.get("/categories"),
+      ]);
+      const property = propertyRes.data.data;
       setFormData({
         title: property.title || "",
         description: property.description || "",
@@ -67,10 +93,11 @@ export default function EditPropertyPage() {
         rooms: property.rooms?.toString() || "",
         yearBuilt: property.yearBuilt?.toString() || "",
         images: property.images || [],
-        categoryId: property.categoryId || "none",
+        categoryId: property.categoryId || "",
       });
+      setCategories(categoriesRes.data.data || []);
     } catch (error) {
-      console.error("Error fetching property:", error);
+      console.error("Error fetching data:", error);
       toast.error("خطا در دریافت اطلاعات ملک");
       router.push("/panel/agent/properties");
     } finally {
@@ -86,13 +113,6 @@ export default function EditPropertyPage() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-
-      // بررسی حجم فایل (حداکثر 5 مگابایت)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`فایل ${file.name} بزرگتر از 5 مگابایت است`);
-        continue;
-      }
-
       const formDataFile = new FormData();
       formDataFile.append("image", file);
 
@@ -125,10 +145,11 @@ export default function EditPropertyPage() {
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
     }));
-    toast.success("تصویر حذف شد");
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (
       !formData.title ||
       !formData.price ||
@@ -153,7 +174,7 @@ export default function EditPropertyPage() {
         rooms: Number(formData.rooms) || 0,
         yearBuilt: Number(formData.yearBuilt) || 0,
         images: formData.images,
-        categoryId: formData.categoryId === "none" ? null : formData.categoryId,
+        categoryId: formData.categoryId || null,
       });
       toast.success("ملک با موفقیت ویرایش شد");
       router.push("/panel/agent/properties");
@@ -165,270 +186,268 @@ export default function EditPropertyPage() {
     }
   };
 
-  const getImageUrl = (url: string) => {
-    if (!url) return "/placeholder.jpg";
-    if (url.startsWith("http")) return url;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
-    return `${baseUrl}${url}`;
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="relative">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-3 h-3 bg-primary rounded-full animate-ping" />
-          </div>
-        </div>
+      <div className="space-y-6 max-w-4xl mx-auto pb-8 px-3 sm:px-6" dir="rtl">
+        <Skeleton className="h-10 w-48 rounded-xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-          className="rounded-full"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-4xl mx-auto pb-8 px-3 sm:px-6"
+      dir="rtl"
+    >
+      {/* هدر */}
+      <motion.div variants={itemVariants} className="flex items-center gap-4">
+        <Link href="/panel/agent/properties">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-xl border-border/60 hover:bg-muted"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+        </Link>
         <div>
-          <h1 className="text-2xl font-bold">ویرایش ملک</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            ویرایش ملک
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             اطلاعات ملک را ویرایش کنید
           </p>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
-            <CardTitle className="text-xl">اطلاعات ملک</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            {/* عنوان */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">
-                عنوان ملک <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                className="rounded-xl focus:ring-primary"
-              />
-            </div>
-
-            {/* توضیحات */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">توضیحات</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={5}
-                className="rounded-xl focus:ring-primary"
-              />
-            </div>
-
-            {/* قیمت و نوع معامله */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  قیمت (تومان) <span className="text-red-500">*</span>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* اطلاعات پایه */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
+            <CardHeader className="border-b border-border/20 bg-muted/10">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Info className="w-4 h-4 text-primary" />
+                اطلاعات پایه
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-bold">
+                  عنوان ملک <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  type="number"
-                  value={formData.price}
+                  value={formData.title}
                   onChange={(e) =>
-                    setFormData({ ...formData, price: e.target.value })
+                    setFormData({ ...formData, title: e.target.value })
                   }
-                  className="rounded-xl focus:ring-primary"
+                  className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">نوع معامله</Label>
-                <Select
-                  value={formData.priceType}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, priceType: v })
-                  }
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sale">فروش</SelectItem>
-                    <SelectItem value="rent">اجاره</SelectItem>
-                    <SelectItem value="mortgage">رهن</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* نوع ملک و دسته‌بندی */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">نوع ملک</Label>
-                <Select
-                  value={formData.propertyType}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, propertyType: v })
+              <div className="space-y-1.5">
+                <Label className="text-sm font-bold">توضیحات</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
                   }
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="apartment">آپارتمان</SelectItem>
-                    <SelectItem value="villa">ویلا</SelectItem>
-                    <SelectItem value="office">دفتر کار</SelectItem>
-                    <SelectItem value="commercial">تجاری</SelectItem>
-                    <SelectItem value="land">زمین</SelectItem>
-                  </SelectContent>
-                </Select>
+                  rows={5}
+                  className="rounded-xl resize-none bg-muted/40 border-border/60 focus-visible:ring-primary"
+                />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">دسته‌بندی</Label>
-                <Select
-                  value={formData.categoryId}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, categoryId: v })
-                  }
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">بدون دسته‌بندی</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* موقعیت مکانی */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  شهر <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  className="rounded-xl focus:ring-primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  آدرس <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  className="rounded-xl focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            {/* مشخصات فنی */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  متراژ (متر مربع)
-                </Label>
-                <Input
-                  type="number"
-                  value={formData.area}
-                  onChange={(e) =>
-                    setFormData({ ...formData, area: e.target.value })
-                  }
-                  className="rounded-xl focus:ring-primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">تعداد اتاق</Label>
-                <Input
-                  type="number"
-                  value={formData.rooms}
-                  onChange={(e) =>
-                    setFormData({ ...formData, rooms: e.target.value })
-                  }
-                  className="rounded-xl focus:ring-primary"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">سال ساخت</Label>
-                <Input
-                  type="number"
-                  value={formData.yearBuilt}
-                  onChange={(e) =>
-                    setFormData({ ...formData, yearBuilt: e.target.value })
-                  }
-                  className="rounded-xl focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            {/* تصاویر */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">تصاویر ملک</Label>
-
-              {/* نمایش تصاویر موجود */}
-              {formData.images.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-4">
-                  {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img
-                        src={getImageUrl(img)}
-                        alt={`تصویر ${idx + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "/placeholder.jpg";
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">
+                    قیمت (تومان) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                    required
+                  />
                 </div>
-              )}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">نوع معامله</Label>
+                  <Select
+                    value={formData.priceType}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, priceType: v })
+                    }
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sale">فروش</SelectItem>
+                      <SelectItem value="rent">اجاره</SelectItem>
+                      <SelectItem value="mortgage">رهن</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              {/* آپلود تصویر جدید */}
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">نوع ملک</Label>
+                  <Select
+                    value={formData.propertyType}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, propertyType: v })
+                    }
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apartment">آپارتمان</SelectItem>
+                      <SelectItem value="villa">ویلا</SelectItem>
+                      <SelectItem value="office">دفتر کار</SelectItem>
+                      <SelectItem value="commercial">تجاری</SelectItem>
+                      <SelectItem value="land">زمین</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">دسته‌بندی</Label>
+                  <Select
+                    value={formData.categoryId}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, categoryId: v })
+                    }
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
+                      <SelectValue placeholder="انتخاب دسته‌بندی" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat._id} value={cat._id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* موقعیت مکانی */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
+            <CardHeader className="border-b border-border/20 bg-muted/10">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                موقعیت مکانی
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">
+                    شهر <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={formData.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">محله</Label>
+                  <Input
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* مشخصات فنی */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
+            <CardHeader className="border-b border-border/20 bg-muted/10">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Home className="w-4 h-4 text-primary" />
+                مشخصات فنی
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">متراژ (متر مربع)</Label>
+                  <Input
+                    type="number"
+                    value={formData.area}
+                    onChange={(e) =>
+                      setFormData({ ...formData, area: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">تعداد اتاق</Label>
+                  <Input
+                    type="number"
+                    value={formData.rooms}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rooms: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-bold">سال ساخت</Label>
+                  <Input
+                    type="number"
+                    value={formData.yearBuilt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, yearBuilt: e.target.value })
+                    }
+                    className="h-10 rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* تصاویر */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
+            <CardHeader className="border-b border-border/20 bg-muted/10">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <ImagePlus className="w-4 h-4 text-primary" />
+                تصاویر ملک
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4">
+              <div className="border-2 border-dashed border-border/60 rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer bg-muted/10">
                 <label className="flex flex-col items-center justify-center cursor-pointer">
                   <div className="flex flex-col items-center justify-center">
                     {uploading ? (
                       <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
                     ) : (
-                      <div className="relative">
-                        <ImagePlus className="w-10 h-10 text-muted-foreground mb-3" />
-                        <Upload className="w-4 h-4 text-muted-foreground absolute -bottom-1 -right-1" />
-                      </div>
+                      <ImagePlus className="w-10 h-10 text-muted-foreground mb-3" />
                     )}
                     <p className="text-sm text-muted-foreground">
                       {uploading
@@ -449,24 +468,71 @@ export default function EditPropertyPage() {
                   />
                 </label>
               </div>
-            </div>
 
-            {/* دکمه ذخیره */}
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl py-6 text-base font-semibold shadow-lg transition-all duration-300"
-            >
-              {submitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <ArrowRight className="w-5 h-5" />
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={getImageUrl(img)}
+                        alt={`تصویر ${idx + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "/images/user.webp";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
-              {submitting ? "در حال ویرایش..." : "ذخیره تغییرات"}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* دکمه‌ها */}
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row justify-end gap-3 pt-2"
+        >
+          <Link
+            href="/panel/agent/properties"
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2 rounded-xl h-10 border-border/60 hover:bg-muted"
+            >
+              انصراف
             </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+          </Link>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full sm:w-auto gap-2 rounded-xl h-10 px-6 font-bold shadow-md shadow-primary/20 order-1 sm:order-2"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                در حال ذخیره...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                ذخیره تغییرات
+              </>
+            )}
+          </Button>
+        </motion.div>
+      </form>
+    </motion.div>
   );
 }

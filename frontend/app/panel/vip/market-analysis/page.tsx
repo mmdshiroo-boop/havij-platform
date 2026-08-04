@@ -45,8 +45,12 @@ import { Separator } from "@/components/ui/separator";
 import apiClient from "@/services/api/client";
 import { toast } from "sonner";
 import { MapView } from "@/components/panel/MapView";
+import { cn } from "@/lib/utils";
 
-// ============ Types ============
+/* ═══════════════════════════════════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════════════════════════════════ */
+
 interface Province {
   id: string;
   name: string;
@@ -66,6 +70,31 @@ interface Stats {
   minPrice: number;
   avgTotalPrice?: number;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONSTANTS & HELPERS
+   ═══════════════════════════════════════════════════════════════════ */
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 },
+};
+
+const formatMoney = (value: number) => {
+  if (!value) return "—";
+  if (value >= 1_000_000_000)
+    return `${(value / 1_000_000_000).toFixed(1)} میلیارد`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)} میلیون`;
+  return value.toLocaleString("fa-IR") + " تومان";
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════════════════ */
 
 export default function MarketAnalysisPage() {
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -105,15 +134,7 @@ export default function MarketAnalysisPage() {
   const [analysisDistrict, setAnalysisDistrict] = useState("none");
   const [mapHighlightDistrict, setMapHighlightDistrict] = useState("none");
 
-  const formatMoney = (value: number) => {
-    if (!value) return "—";
-    if (value >= 1_000_000_000)
-      return `${(value / 1_000_000_000).toFixed(1)} میلیارد`;
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)} میلیون`;
-    return value.toLocaleString("fa-IR") + " تومان";
-  };
-
-  // ---------- زوم نقشه روی یک لوکیشن ----------
+  /* ── Zoom ── */
   const focusMapOnLocation = useCallback(
     async (query: string, zoom: number): Promise<boolean> => {
       try {
@@ -138,7 +159,7 @@ export default function MarketAnalysisPage() {
     [],
   );
 
-  // ---------- اعمال فیلتر ----------
+  /* ── Apply Filter ── */
   const handleMarketFilterApply = useCallback(
     (filters: MarketFilterValues) => {
       setTradeType(filters.tradeType);
@@ -178,7 +199,7 @@ export default function MarketAnalysisPage() {
     setMapZoom(6);
   }, []);
 
-  // ---------- دریافت داده‌های اصلی (تحلیل + نقشه) ----------
+  /* ── Fetch Data ── */
   const fetchMarketDashboardData = useCallback(async () => {
     const currentProvince = provinces.find((p) => p.id === selectedProvinceId);
     const provinceName = currentProvince?.name || "";
@@ -320,7 +341,7 @@ export default function MarketAnalysisPage() {
     fetchMarketDashboardData();
   }, [fetchMarketDashboardData]);
 
-  // ---------- دریافت استان‌ها / شهرها / محله‌ها ----------
+  /* ── Provinces / Cities / Districts ── */
   useEffect(() => {
     (async () => {
       try {
@@ -389,7 +410,7 @@ export default function MarketAnalysisPage() {
     })();
   }, [selectedCityId, cities]);
 
-  // ---------- helper: تحلیل از روی مارکرها ----------
+  /* ── District Analytics Helper ── */
   const computeAnalyticsFromMarkers = (markersData: any[], name: string) => {
     let totalPrice = 0,
       totalArea = 0,
@@ -416,7 +437,7 @@ export default function MarketAnalysisPage() {
     };
   };
 
-  // ---------- کلیک روی محله ----------
+  /* ── District Click ── */
   const handleDistrictClick = useCallback(
     async (districtName: string) => {
       if (!selectedCityId) return;
@@ -498,7 +519,7 @@ export default function MarketAnalysisPage() {
     ],
   );
 
-  // ---------- کلیک روی منطقه ----------
+  /* ── Region Click ── */
   const handleRegionClick = useCallback(
     async (regionName: string) => {
       setActiveDistrictName(regionName);
@@ -580,7 +601,7 @@ export default function MarketAnalysisPage() {
     ],
   );
 
-  // ---------- مشاهده روی نقشه ----------
+  /* ── Show Ads On Map ── */
   const handleShowAdsOnMap = async (districtName: string) => {
     setIsDistrictModalOpen(false);
     const city = cities.find((c) => c.id === selectedCityId);
@@ -596,7 +617,7 @@ export default function MarketAnalysisPage() {
     } else toast.error("مختصات یافت نشد");
   };
 
-  // ---------- نمودار ----------
+  /* ── Chart helpers ── */
   const filteredTrend = useMemo(
     () => priceTrend.slice(-parseInt(chartPeriod)),
     [priceTrend, chartPeriod],
@@ -611,14 +632,23 @@ export default function MarketAnalysisPage() {
       return Math.round(sum / window);
     });
   }, [filteredTrend]);
-  // ============ JSX ============
+
+  /* ═══════════════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════════════ */
+
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 px-3 sm:px-6 pb-8"
+      >
+        {/* ══════ Header ══════ */}
         <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/10 to-background border-b border-primary/10"
+          variants={itemVariants}
+          className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/10 to-background border-b border-primary/10 rounded-b-2xl mb-6"
         >
           <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -639,7 +669,7 @@ export default function MarketAnalysisPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm p-1.5 rounded-2xl border border-border/50 shadow-lg">
+              <div className="flex items-center gap-2 bg-card/80 backdrop-blur-sm p-1.5 rounded-2xl border border-border/60 shadow-lg">
                 <button
                   onClick={() => setTradeType("buy")}
                   className={`relative px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${tradeType === "buy" ? "bg-gradient-to-r from-primary to-primary/90 text-white" : "text-muted-foreground hover:text-foreground"}`}
@@ -661,30 +691,38 @@ export default function MarketAnalysisPage() {
           </div>
         </motion.header>
 
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-          <MarketAdvancedFilter
-            initialValues={{
-              tradeType,
-              propertyType,
-              priceRange,
-              sizeRange,
-              buildingAge,
-              roomsCount,
-              region: selectedRegion,
-              province:
-                provinces.find((p) => p.id === selectedProvinceId)?.name || "",
-              city: cities.find((c) => c.id === selectedCityId)?.name || "",
-              district: analysisDistrict,
-            }}
-            onApply={handleMarketFilterApply}
-            onReset={handleMarketFilterReset}
-            loading={loading}
-          />
+        <div className="space-y-6">
+          {/* ══════ Filter ══════ */}
+          <motion.div variants={itemVariants}>
+            <MarketAdvancedFilter
+              initialValues={{
+                tradeType,
+                propertyType,
+                priceRange,
+                sizeRange,
+                buildingAge,
+                roomsCount,
+                region: selectedRegion,
+                province:
+                  provinces.find((p) => p.id === selectedProvinceId)?.name ||
+                  "",
+                city: cities.find((c) => c.id === selectedCityId)?.name || "",
+                district: analysisDistrict,
+              }}
+              onApply={handleMarketFilterApply}
+              onReset={handleMarketFilterReset}
+              loading={loading}
+            />
+          </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ══════ Map + Top Districts ══════ */}
+          <motion.div
+            variants={itemVariants}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          >
             <div
               id="market-map-section"
-              className="lg:col-span-2 h-[450px] rounded-2xl overflow-hidden border border-border/50 shadow-xl"
+              className="lg:col-span-2 h-[400px] sm:h-[450px] rounded-2xl overflow-hidden border border-border/60 shadow-sm"
             >
               <MapView
                 markers={markers}
@@ -698,7 +736,7 @@ export default function MarketAnalysisPage() {
                 className="h-full"
               />
             </div>
-            <div className="h-[450px]">
+            <div className="h-[400px] sm:h-[450px]">
               <TopDistrictsCard
                 districts={topDistricts}
                 districtSearch={districtSearch}
@@ -711,9 +749,13 @@ export default function MarketAnalysisPage() {
                 isCitySelected={!!selectedCityId}
               />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ══════ Chart + Pulse ══════ */}
+          <motion.div
+            variants={itemVariants}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          >
             <div className="lg:col-span-2">
               <PriceTrendChart
                 filteredTrend={filteredTrend}
@@ -730,8 +772,9 @@ export default function MarketAnalysisPage() {
                 formatMoney={formatMoney}
               />
             </div>
-          </div>
+          </motion.div>
 
+          {/* ══════ District Trend Chart ══════ */}
           <AnimatePresence>
             {activeDistrictName && (
               <DistrictTrendChart
@@ -745,6 +788,7 @@ export default function MarketAnalysisPage() {
           </AnimatePresence>
         </div>
 
+        {/* ══════ Modals ══════ */}
         <DistrictAnalyticsModal
           isOpen={isDistrictModalOpen}
           onClose={() => setIsDistrictModalOpen(false)}
@@ -762,12 +806,15 @@ export default function MarketAnalysisPage() {
           loading={loading}
           zoom={mapZoom}
         />
-      </div>
+      </motion.div>
     </TooltipProvider>
   );
 }
 
-// ============ SUB-COMPONENTS (همگی اصلاح‌شده) ============
+/* ═══════════════════════════════════════════════════════════════════
+   SUB-COMPONENTS (همگی اصلاح‌شده)
+   ═══════════════════════════════════════════════════════════════════ */
+
 function StatPill({ label, value, icon, trend }: any) {
   return (
     <div className="bg-muted/50 rounded-xl p-3 border border-border/30 hover:bg-muted/70 hover:shadow-sm transition-all">
@@ -807,8 +854,8 @@ function TopDistrictsCard({
       : sorted;
   }, [sorted, districtSearch]);
   return (
-    <Card className="rounded-2xl border-border/30 h-full flex flex-col shadow-card">
-      <CardHeader className="p-4 pb-2 border-b border-border/20">
+    <Card className="rounded-2xl border-border/60 shadow-sm h-full flex flex-col bg-card/80 backdrop-blur-sm">
+      <CardHeader className="p-4 pb-2 border-b border-border/40">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-black flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
@@ -820,7 +867,7 @@ function TopDistrictsCard({
               placeholder="جستجو..."
               value={districtSearch}
               onChange={(e) => setDistrictSearch(e.target.value)}
-              className="h-8 w-32 text-xs pr-8 pl-2 rounded-xl"
+              className="h-8 w-32 text-xs pr-8 pl-2 rounded-xl bg-muted/40 border-border/60"
             />
           </div>
         </div>
@@ -854,17 +901,32 @@ function TopDistrictsCard({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.03 }}
                   onClick={handler}
-                  className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? "bg-primary/15 border-primary/40 shadow-sm" : "hover:bg-muted/50 border-transparent"}`}
+                  className={cn(
+                    "group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border",
+                    isSelected
+                      ? "bg-primary/15 border-primary/40 shadow-sm"
+                      : "hover:bg-muted/50 border-transparent",
+                  )}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? "bg-primary text-white" : idx < 3 ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+                      className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0",
+                        isSelected
+                          ? "bg-primary text-white"
+                          : idx < 3
+                            ? "bg-primary text-white"
+                            : "bg-muted text-muted-foreground",
+                      )}
                     >
                       {idx + 1}
                     </span>
                     <div className="min-w-0">
                       <p
-                        className={`text-xs font-bold truncate ${isSelected ? "text-primary" : ""}`}
+                        className={cn(
+                          "text-xs font-bold truncate",
+                          isSelected && "text-primary",
+                        )}
                       >
                         {name}
                       </p>
@@ -956,7 +1018,7 @@ function MarketPulseCard({ stats, tradeType, formatMoney }: any) {
   }, [stats, tradeType]);
   if (!analysis)
     return (
-      <Card className="rounded-2xl border-border/30">
+      <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-8 flex flex-col items-center justify-center">
           <Activity className="w-8 h-8 text-muted-foreground/40 mb-4" />
           <p className="text-sm font-bold text-muted-foreground">
@@ -966,8 +1028,8 @@ function MarketPulseCard({ stats, tradeType, formatMoney }: any) {
       </Card>
     );
   return (
-    <Card className="rounded-2xl border-border/30 overflow-hidden">
-      <CardHeader className="p-5 pb-3 border-b border-border/20 bg-gradient-to-r from-primary/5 to-transparent">
+    <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden bg-card/80 backdrop-blur-sm">
+      <CardHeader className="p-5 pb-3 border-b border-border/40 bg-gradient-to-r from-primary/5 to-transparent">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-black flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary" /> نبض بازار
@@ -1028,6 +1090,7 @@ function MarketPulseCard({ stats, tradeType, formatMoney }: any) {
     </Card>
   );
 }
+
 function PriceTrendChart({
   filteredTrend,
   movingAverage,
@@ -1057,7 +1120,7 @@ function PriceTrendChart({
     .filter(Boolean);
   if (prices.length === 0)
     return (
-      <Card className="rounded-2xl border-border/30">
+      <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-3 min-h-[300px] h-80 sm:h-96 flex flex-col items-center justify-center">
           <BarChart3 className="w-12 h-12 text-muted-foreground/30 mb-4" />
           <p className="text-sm font-bold text-muted-foreground">
@@ -1078,29 +1141,14 @@ function PriceTrendChart({
       : true;
   const trendColor = lastTrend ? upColor : downColor;
   return (
-    <Card className="rounded-2xl border-border/30 overflow-hidden bg-card shadow-card">
-      <CardHeader className="p-4 pb-2 border-b border-border/20 bg-gradient-to-r from-background to-muted/5">
+    <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden bg-card/80 backdrop-blur-sm">
+      <CardHeader className="p-4 pb-2 border-b border-border/40 bg-gradient-to-r from-background to-muted/5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
             <CardTitle className="text-sm font-black flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-primary" />
               نوسان قیمت هر متر مربع
             </CardTitle>
-            <div className="hidden sm:flex items-center gap-3 text-[10px]">
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: trendColor }}
-                />
-                <span className="text-muted-foreground">قیمت</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-0.5 rounded-full bg-primary" />
-                <span className="text-muted-foreground">
-                  میانگین متحرک (MA3)
-                </span>
-              </div>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-right">
@@ -1147,13 +1195,6 @@ function PriceTrendChart({
                 <stop offset="50%" stopColor={downColor} stopOpacity={0.08} />
                 <stop offset="100%" stopColor={downColor} stopOpacity={0} />
               </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                <feMerge>
-                  <feMergeNode in="coloredBlur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
             </defs>
             <CartesianGrid
               stroke={gridColor}
@@ -1275,7 +1316,6 @@ function PriceTrendChart({
                 fill: "hsl(var(--background))",
                 stroke: trendColor,
                 strokeWidth: 2.5,
-                filter: "url(#glow)",
               }}
               animationDuration={1200}
             />
@@ -1293,13 +1333,9 @@ function PriceTrendChart({
           </AreaChart>
         </ResponsiveContainer>
       </CardContent>
-      <div className="border-t border-border/20 px-4 py-2 flex items-center justify-between bg-muted/5">
+      <div className="border-t border-border/40 px-4 py-2 flex items-center justify-between bg-muted/5">
         <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
           <span>بازه: {chartPeriod} ماه</span>
-          <span>•</span>
-          <span>
-            آخرین بروزرسانی: {filteredTrend[filteredTrend.length - 1]?.month}
-          </span>
         </div>
         <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5">
           {["3", "6", "12"].map((p) => (
@@ -1376,7 +1412,7 @@ function DistrictAnalyticsModal({
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
           className="relative bg-card rounded-3xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl border border-border/50 flex flex-col"
         >
-          <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl border-b border-border/20 px-5 py-4 flex items-center justify-between">
+          <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl border-b border-border/40 px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-primary" />
@@ -1410,37 +1446,18 @@ function DistrictAnalyticsModal({
             ) : analytics ? (
               <>
                 <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-background to-muted/30">
-                  <div className="absolute top-0 right-0 w-24 h-24 opacity-[0.07]">
-                    <div
-                      className={`w-full h-full rounded-full blur-2xl ${analytics.count > 50 ? "bg-red-500" : analytics.count > 20 ? "bg-amber-500" : analytics.count > 10 ? "bg-emerald-500" : "bg-sky-500"}`}
-                    />
-                  </div>
-                  <div className="relative flex items-center gap-4 p-5">
+                  <div className="flex items-center gap-4 p-5">
                     <div
                       className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${marketStatus?.bg} ${marketStatus?.color}`}
                     >
                       {marketStatus?.icon}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-sm font-black ${marketStatus?.color}`}
-                        >
-                          {marketStatus?.label}
-                        </span>
-                        <div
-                          className={`w-2 h-2 rounded-full animate-pulse ${analytics.count > 50 ? "bg-red-500" : analytics.count > 20 ? "bg-amber-500" : analytics.count > 10 ? "bg-emerald-500" : "bg-sky-500"}`}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {analytics.count > 50
-                          ? "تقاضای بالا، قیمت‌ها در حال افزایش"
-                          : analytics.count > 20
-                            ? "معاملات خوب، بازار رو به رشد"
-                            : analytics.count > 10
-                              ? "عرضه و تقاضا متعادل"
-                              : "تعداد آگهی محدود، بازار آرام"}
-                      </p>
+                      <span
+                        className={`text-sm font-black ${marketStatus?.color}`}
+                      >
+                        {marketStatus?.label}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-20 h-1.5 bg-muted/50 rounded-full overflow-hidden">
@@ -1453,26 +1470,6 @@ function DistrictAnalyticsModal({
                           className={`h-full rounded-full ${analytics.count > 50 ? "bg-red-500" : analytics.count > 20 ? "bg-amber-500" : analytics.count > 10 ? "bg-emerald-500" : "bg-sky-500"}`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-muted-foreground">
-                        {Math.min(
-                          100,
-                          Math.round((analytics.count / 80) * 100),
-                        )}
-                        %
-                      </span>
-                    </div>
-                  </div>
-                  <div className="border-t border-border/30 px-5 py-2 flex items-center justify-between bg-muted/10">
-                    <span className="text-[10px] text-muted-foreground">
-                      شاخص رقابت بازار
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-3 h-1.5 rounded-full ${i < (analytics.count > 50 ? 5 : analytics.count > 30 ? 4 : analytics.count > 20 ? 3 : analytics.count > 10 ? 2 : 1) ? (analytics.count > 50 ? "bg-red-400" : analytics.count > 20 ? "bg-amber-400" : analytics.count > 10 ? "bg-emerald-400" : "bg-sky-400") : "bg-muted/30"}`}
-                        />
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -1612,9 +1609,9 @@ function DistrictTrendChart({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="bg-card rounded-2xl border border-border/50 shadow-card overflow-hidden"
+      className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden"
     >
-      <div className="flex items-center justify-between p-4 border-b border-border/20 bg-gradient-to-r from-primary/5 to-transparent">
+      <div className="flex items-center justify-between p-4 border-b border-border/40 bg-gradient-to-r from-primary/5 to-transparent">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-primary" />
@@ -1624,24 +1621,6 @@ function DistrictTrendChart({
               <MapPin className="w-4 h-4 text-primary" /> نوسان قیمت در{" "}
               {districtName}
             </h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] text-muted-foreground">
-                {data.length} ماه
-              </span>
-              {!loading && lastPrice > 0 && (
-                <Badge
-                  className={`text-xs font-bold flex items-center gap-1 ${isUp ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                >
-                  {isUp ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  {totalChange >= 0 ? "+" : ""}
-                  {totalChange.toFixed(1)}%
-                </Badge>
-              )}
-            </div>
           </div>
         </div>
         <Button
@@ -1681,13 +1660,6 @@ function DistrictTrendChart({
                   />
                   <stop offset="100%" stopColor={trendColor} stopOpacity={0} />
                 </linearGradient>
-                <filter id={`dGlow-${districtName}`}>
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
               </defs>
               <CartesianGrid
                 stroke={gridColor}
@@ -1759,24 +1731,9 @@ function DistrictTrendChart({
                             </span>
                           </div>
                         )}
-                        {point.totalAds && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">
-                              آگهی:
-                            </span>
-                            <span className="text-xs font-bold">
-                              {point.totalAds} فقره
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
-                }}
-                cursor={{
-                  stroke: "hsl(var(--primary)/0.3)",
-                  strokeWidth: 1.5,
-                  strokeDasharray: "4 4",
                 }}
               />
               <Area
@@ -1791,7 +1748,6 @@ function DistrictTrendChart({
                   fill: "hsl(var(--background))",
                   stroke: trendColor,
                   strokeWidth: 2.5,
-                  filter: `url(#dGlow-${districtName})`,
                 }}
                 animationDuration={1200}
               />
@@ -1815,7 +1771,7 @@ function DistrictTrendChart({
         )}
       </div>
       {analysis && (
-        <div className="border-t border-border/20 p-4 bg-muted/5">
+        <div className="border-t border-border/40 p-4 bg-muted/5">
           <div className="flex items-start gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
               <Sparkles className="w-4 h-4 text-primary" />
@@ -1829,6 +1785,7 @@ function DistrictTrendChart({
     </motion.div>
   );
 }
+
 function MapFullscreenModal({
   isOpen,
   onClose,

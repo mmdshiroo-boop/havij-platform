@@ -1,3 +1,4 @@
+// tickets/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,12 +13,14 @@ import { toast } from "sonner";
 import { ticketApi } from "@/services/api/ticket.api";
 import type { Ticket } from "@/types";
 import { useAuth } from "@/app/context/AuthContext";
-import { ArrowRight, Send, Lock, Star, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowRight, Send, Lock, Star, RefreshCw, Loader2, Clock } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const statusMap: Record<string, { label: string; color: string }> = {
-  open: { label: "باز", color: "bg-orange-500/10 text-orange-600" },
-  in_progress: { label: "در حال بررسی", color: "bg-blue-500/10 text-blue-600" },
-  closed: { label: "بسته شده", color: "bg-green-500/10 text-green-600" },
+  open: { label: "باز", color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  in_progress: { label: "در حال بررسی", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  closed: { label: "بسته شده", color: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
 export default function UserTicketDetailPage() {
@@ -36,7 +39,6 @@ export default function UserTicketDetailPage() {
   const fetchTicket = async () => {
     try {
       const data = await ticketApi.getTicket(id);
-      // تبدیل امن با unknown برای جلوگیری از تداخل تایپ‌ها
       setTicket(data as unknown as Ticket);
       setRating((data as any).rating || 0);
     } catch (error) {
@@ -99,38 +101,51 @@ export default function UserTicketDetailPage() {
 
   if (loading)
     return (
-      <div className="max-w-3xl mx-auto" dir="rtl">
-        <Skeleton className="h-64" />
+      <div className="max-w-3xl mx-auto space-y-6" dir="rtl">
+        <Skeleton className="h-10 w-48 rounded-xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-20 rounded-xl" />
       </div>
     );
   if (!ticket) return null;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6" dir="rtl">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-3xl mx-auto space-y-6 px-3 sm:px-6 pb-8"
+      dir="rtl"
+    >
       {/* هدر */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent">
+        <div className="flex items-center gap-3.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.back()}
-            className="rounded-xl"
+            className="h-10 w-10 rounded-xl hover:bg-muted/60"
           >
             <ArrowRight className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-extrabold">
+            <h1 className="text-xl font-extrabold text-foreground">
               {ticket.subject || ticket.title || "بدون عنوان"}
             </h1>
-            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-              <Badge className={statusMap[ticket.status]?.color}>
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              <Badge
+                variant="outline"
+                className={cn("rounded-md text-[10px] font-bold border", statusMap[ticket.status]?.color)}
+              >
                 {statusMap[ticket.status]?.label}
               </Badge>
-              {ticket.priority && <span>{ticket.priority}</span>}
-              {ticket.category && <span>• {ticket.category}</span>}
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {new Date(ticket.updatedAt || ticket.createdAt).toLocaleDateString("fa-IR")}
+              </span>
               {ticket.rating && (
-                <span className="flex items-center gap-1 text-amber-500">
-                  <Star className="w-3 h-3 fill-current" /> {ticket.rating}
+                <span className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+                  <Star className="w-3.5 h-3.5 fill-current" /> {ticket.rating}
                 </span>
               )}
             </div>
@@ -138,23 +153,23 @@ export default function UserTicketDetailPage() {
         </div>
 
         {/* عملیات */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
           {ticket.status === "closed" && (
             <>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleReopen}
-                className="rounded-xl gap-1"
+                className="rounded-xl gap-1.5 text-xs font-bold border-border/60"
               >
                 <RefreshCw className="w-4 h-4" />
                 بازگشایی
               </Button>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`w-5 h-5 cursor-pointer ${
+                    className={`w-5 h-5 cursor-pointer transition-colors ${
                       star <= (hoverRating || rating)
                         ? "fill-amber-500 text-amber-500"
                         : "text-muted-foreground/30"
@@ -172,7 +187,7 @@ export default function UserTicketDetailPage() {
               size="sm"
               variant="destructive"
               onClick={handleClose}
-              className="rounded-xl gap-1"
+              className="rounded-xl gap-1.5 text-xs font-bold"
             >
               <Lock className="w-4 h-4" /> بستن
             </Button>
@@ -180,10 +195,8 @@ export default function UserTicketDetailPage() {
         </div>
       </div>
 
-      <Separator />
-
       {/* پیام‌ها */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden">
         <CardContent className="p-6 space-y-4">
           <div className="space-y-4 max-h-[500px] overflow-y-auto">
             {ticket.messages?.length ? (
@@ -193,79 +206,82 @@ export default function UserTicketDetailPage() {
                   className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] p-3 rounded-2xl ${
+                    className={cn(
+                      "max-w-[80%] p-3 rounded-2xl shadow-sm",
                       msg.sender === "user"
                         ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-muted rounded-bl-md"
-                    }`}
+                        : "bg-muted/60 rounded-bl-md"
+                    )}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-xs font-bold">
                         {msg.sender === "user" ? "شما" : "پشتیبانی"}
                       </span>
                       <span className="text-[10px] opacity-70">
-                        {new Date(msg.timestamp).toLocaleString("fa-IR")}
+                        {new Date(msg.timestamp).toLocaleString("fa-IR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed">{msg.message}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground text-sm">
+              <p className="text-center text-muted-foreground text-sm py-8">
                 هنوز پیامی ثبت نشده است.
               </p>
             )}
           </div>
 
           {/* فرم ارسال */}
-          {ticket.status !== "closed" ? (
-            <div className="flex items-end gap-2 pt-2 border-t">
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="پیام خود را بنویسید..."
-                rows={2}
-                className="flex-1 resize-none rounded-xl"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={sending}
-                size="icon"
-                className="shrink-0 rounded-xl"
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-end gap-2 pt-2 border-t">
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="توضیح برای بازگشایی..."
-                rows={2}
-                className="flex-1 resize-none rounded-xl"
-              />
-              <Button
-                onClick={handleReopen}
-                className="shrink-0 rounded-xl gap-1"
-              >
-                <RefreshCw className="w-4 h-4" /> بازگشایی
-              </Button>
-            </div>
-          )}
+          <div className="pt-2 border-t border-border/40">
+            {ticket.status !== "closed" ? (
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="پیام خود را بنویسید..."
+                  rows={2}
+                  className="flex-1 resize-none rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={sending}
+                  size="icon"
+                  className="shrink-0 rounded-xl h-10 w-10"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="توضیح برای بازگشایی..."
+                  rows={2}
+                  className="flex-1 resize-none rounded-xl bg-muted/40 border-border/60 focus-visible:ring-primary"
+                />
+                <Button onClick={handleReopen} className="shrink-0 rounded-xl gap-1.5 text-xs font-bold">
+                  <RefreshCw className="w-4 h-4" /> بازگشایی
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
