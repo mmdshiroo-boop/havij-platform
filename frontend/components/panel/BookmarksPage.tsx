@@ -102,21 +102,21 @@ export default function BookmarksPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {ads.map((ad) => (
-            <AdCard
-              key={ad._id}
-              _id={ad._id}
-              title={ad.title}
-              price={ad.price || 0}
-              city={ad.city}
-              district={ad.district}
-              images={ad.images}
-              createdAt={ad.createdAt}
-              isUrgent={ad.isUrgent}
-              isVerified={ad.isVerified}
-              adType={ad.adType}
-              userRole={ad.userRole}
-            />
-          ))}
+  <AdCard
+    key={ad._id}
+    _id={ad._id}
+    title={ad.title}
+    price={ad.price || 0}
+    city={ad.city}
+    district={(ad as any).district}
+    images={ad.images}
+    createdAt={ad.createdAt}
+    isUrgent={ad.isUrgent}
+    isVerified={(ad as any).isVerified}
+    adType={(ad as any).adType}
+    userRole={(ad as any).userRole}
+  />
+))}
         </div>
       )}
     </div>

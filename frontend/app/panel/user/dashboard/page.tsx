@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -86,15 +86,18 @@ const containerVariants = {
   show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 260, damping: 20 },
+    transition: {
+      type: "spring" as const,
+      stiffness: 260,
+      damping: 20,
+    },
   },
 };
-
 // ─── CUSTOM TOOLTIP FOR RECHARTS ──────────
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
