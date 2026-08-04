@@ -185,7 +185,12 @@ export default function AgentEditAdPage() {
                   <Label className="text-sm font-bold">نوع قیمت</Label>
                   <Select
                     value={formData.priceType || "negotiable"}
-                    onValueChange={(value) => setFormData({ ...formData, priceType: value })}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        priceType: value as "fixed" | "negotiable" | "auction",
+                      })
+                    }
                   >
                     <SelectTrigger className="h-10 rounded-xl bg-muted/40 border-border/60">
                       <SelectValue />
