@@ -1,15 +1,25 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/app/context/AuthContext";
 import { adsApi, Ad } from "@/services/api/ads.api";
 import { categoryApi, Category } from "@/services/api/category.api";
 import { locationApi, Province } from "@/services/api/location.api";
 import AdFeed from "@/components/common/AdFeed";
 import { FullPageSpinner } from "@/components/ui/skeletons";
-import { HeroSection } from "@/components/home/HeroSection";
-import { MobileCategories } from "@/components/mobile/mobile-categories";
 import { VipPromoCard } from "@/components/common/VipPromoCard";
+
+// ★ Dynamic imports برای کامپوننت‌های سنگین
+const HeroSection = dynamic(
+  () => import("@/components/home/HeroSection").then((mod) => mod.HeroSection),
+  { ssr: false }
+);
+
+const MobileCategories = dynamic(
+  () => import("@/components/mobile/mobile-categories").then((mod) => mod.MobileCategories),
+  { ssr: false }
+);
 
 function HomePageContent() {
   const { user } = useAuth();
@@ -49,7 +59,6 @@ function HomePageContent() {
 
   if (initialLoading) return <FullPageSpinner />;
 
-  // نمایش کارت VIP فقط برای کاربر عادی یا مهمان
   const showVipPromo = !user || user.role === "user";
 
   return (
@@ -64,16 +73,16 @@ function HomePageContent() {
         <HeroSection />
 
         {/* کارت VIP — فقط موبایل — فقط کاربر عادی/مهمان */}
-{showVipPromo && (
-  <div className="w-full px-3 sm:px-4">
-    <VipPromoCard
-      source="home"
-      title="بیشتر دیده شو، سریع‌تر بفروش"
-      description="با اشتراک VIP هویج، آگهی‌هات در صدر نتایج قرار می‌گیرن و به ابزارهای حرفه‌ای دسترسی پیدا می‌کنی."
-      ctaText="مشاهده پلن‌های VIP"
-    />
-  </div>
-)}
+        {showVipPromo && (
+          <div className="w-full px-3 sm:px-4">
+            <VipPromoCard
+              source="home"
+              title="بیشتر دیده شو، سریع‌تر بفروش"
+              description="با اشتراک VIP هویج، آگهی‌هات در صدر نتایج قرار می‌گیرن و به ابزارهای حرفه‌ای دسترسی پیدا می‌کنی."
+              ctaText="مشاهده پلن‌های VIP"
+            />
+          </div>
+        )}
 
         {/* فید آگهی‌ها */}
         <AdFeed
