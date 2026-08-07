@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // ★ AvatarImage اضافه شد
 import { motion } from "framer-motion";
 import {
   Shield,
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { adminApi, AdminUser } from "@/services/api/admin.api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getImageUrl } from "@/lib/getImageUrl"; // ★ helper تصاویر
 
 export default function SuperAdminAdminsPage() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -66,10 +67,9 @@ export default function SuperAdminAdminsPage() {
     setLoading(true);
     try {
       const data = await adminApi.getAdmins();
-      // افزودن فیلد status به صورت پیش‌فرض (تا وقتی admin.api.ts اصلاح نشده)
       const adminsWithStatus = data.map((admin: any) => ({
         ...admin,
-        status: admin.status || "active", // اگر status نداشت، فعال در نظر بگیر
+        status: admin.status || "active",
       }));
       setAdmins(adminsWithStatus);
     } catch (error) {
@@ -214,18 +214,19 @@ export default function SuperAdminAdminsPage() {
               <CardContent className="p-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-  <AvatarImage
-    src={
-      admin.avatar
-        ? getImageUrl(admin.avatar)
-        : "/images/user.webp"
-    }
-    alt={admin.firstName || "ادمین"}
-    className="object-cover"
-  />
-  <AvatarFallback className="bg-primary/10 text-primary text-lg" />
-</Avatar>
+                    {/* ★ آواتار اصلاح‌شده ★ */}
+                    <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                      <AvatarImage
+                        src={
+                          (admin as any).avatar
+                            ? getImageUrl((admin as any).avatar)
+                            : "/images/user.webp"
+                        }
+                        alt={admin.firstName || "ادمین"}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg" />
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold">
