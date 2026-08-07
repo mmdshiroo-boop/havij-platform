@@ -214,11 +214,18 @@ export default function SuperAdminAdminsPage() {
               <CardContent className="p-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                        {admin.firstName?.[0] ?? "؟"}
-                      </AvatarFallback>
-                    </Avatar>
+              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+  <AvatarImage
+    src={
+      admin.avatar
+        ? getImageUrl(admin.avatar)
+        : "/images/user.webp"
+    }
+    alt={admin.firstName || "ادمین"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-primary/10 text-primary text-lg" />
+</Avatar>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold">
