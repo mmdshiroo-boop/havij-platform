@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -16,7 +15,6 @@ import {
   AlertTriangle,
   Sparkles,
   FileText,
-  Clock,
   ArrowUp,
   Trash2,
   Zap,
@@ -62,11 +60,12 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
 export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // درصد آپلود فایل
-  const [processingProgress, setProcessingProgress] = useState(0); // درصد پردازش
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
   const [dragOver, setDragOver] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File | null) => {
@@ -76,6 +75,7 @@ export default function BulkUploadPage() {
       setUploadProgress(0);
       setProcessingProgress(0);
       setTaskId(null);
+      setIsCompleted(false);
     } else if (f) {
       toast.error("فقط فایل‌های ZIP مجاز هستند.");
     }
@@ -136,15 +136,15 @@ export default function BulkUploadPage() {
         if (task.status === "completed") {
           setResult(task.results);
           setProcessingProgress(100);
-          toast.success("پردازش کامل شد");
+          setIsCompleted(true);
+          toast.success("✅ پردازش با موفقیت به پایان رسید!");
           clearInterval(interval);
           setTaskId(null);
         } else if (task.status === "failed") {
-          toast.error(task.error || "خطا در پردازش");
+          toast.error(task.error || "❌ خطا در پردازش");
           clearInterval(interval);
           setTaskId(null);
         } else {
-          // محاسبه درصد پیشرفت پردازش
           const progress = task.totalItems > 0
             ? Math.round((task.processed / task.totalItems) * 100)
             : 0;
@@ -163,6 +163,7 @@ export default function BulkUploadPage() {
     setUploadProgress(0);
     setProcessingProgress(0);
     setTaskId(null);
+    setIsCompleted(false);
   };
 
   const formatSize = (bytes: number) => {
@@ -212,10 +213,16 @@ export default function BulkUploadPage() {
             در حال ارسال...
           </Badge>
         )}
-        {taskId && (
+        {taskId && !isCompleted && (
           <Badge variant="secondary" className="h-10 px-5 text-sm font-bold border-border/60">
             <Loader2 className="w-4 h-4 ml-2 animate-spin" />
             در حال پردازش...
+          </Badge>
+        )}
+        {isCompleted && (
+          <Badge className="h-10 px-5 text-sm font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-200">
+            <CheckCircle className="w-4 h-4 ml-2" />
+            تکمیل شد
           </Badge>
         )}
       </motion.div>
@@ -279,17 +286,19 @@ export default function BulkUploadPage() {
                         {formatSize(file.size)}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        clearFile();
-                      }}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
+                    {!taskId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearFile();
+                        }}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    )}
                   </div>
 
                   {/* Progress آپلود فایل */}
@@ -309,17 +318,19 @@ export default function BulkUploadPage() {
                   {taskId && (
                     <div className="mt-5 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">پردازش آگهی‌ها</span>
+                        <span className="text-muted-foreground">
+                          {isCompleted ? "پردازش تکمیل شد" : "در حال پردازش آگهی‌ها"}
+                        </span>
                         <span className="tabular-nums font-mono font-bold text-primary">
                           {processingProgress}%
                         </span>
                       </div>
                       <Progress value={processingProgress} className="h-2" />
-                      <p className="text-xs text-muted-foreground text-center">
-                        {processingProgress < 100
-                          ? "در حال بررسی و ذخیرهٔ آگهی‌ها..."
-                          : "پردازش کامل شد"}
-                      </p>
+                      {!isCompleted && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          لطفاً شکیبا باشید... در حال بررسی و ذخیره‌سازی آگهی‌ها
+                        </p>
+                      )}
                     </div>
                   )}
                 </motion.div>
@@ -342,7 +353,7 @@ export default function BulkUploadPage() {
 
       {/* نتایج */}
       <AnimatePresence>
-        {result && (
+        {result && isCompleted && (
           <motion.div
             variants={itemVariants}
             initial="hidden"
@@ -351,8 +362,8 @@ export default function BulkUploadPage() {
             className="space-y-5"
           >
             <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-primary/10 rounded-lg">
-                <Sparkles className="w-5 h-5 text-primary" />
+              <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                <Sparkles className="w-5 h-5 text-emerald-500" />
               </div>
               <h2 className="text-lg font-extrabold text-foreground">
                 خلاصهٔ عملیات

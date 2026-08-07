@@ -475,89 +475,47 @@ function mapToAdPayload(
 export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?._id;
-    if (!userId)
-      return res.status(401).json({ success: false, message: "لطفاً وارد شوید" });
+    if (!userId) return res.status(401).json({ success: false, message: "لطفاً وارد شوید" });
 
     const files = (req as any).files;
-    if (!files || !files.zipFile)
+    if (!files || !files.zipFile) {
       return res.status(400).json({ success: false, message: "فایل ZIP الزامی است" });
+    }
 
     const zipFile = files.zipFile as any;
-    if (!zipFile.name.endsWith(".zip"))
+    if (!zipFile.name.endsWith(".zip")) {
       return res.status(400).json({ success: false, message: "فقط فایل‌های ZIP مجاز هستند" });
+    }
 
+    // ─── ذخیره فایل در مسیر موقت ───
     const tempDir = path.resolve(process.cwd(), "temp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    const tempPath = path.join(tempDir, `bulk-${Date.now()}.zip`);
-    await zipFile.mv(tempPath);
+    const tempFileName = `bulk-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.zip`;
+    const tempPath = path.join(tempDir, tempFileName);
+    await zipFile.mv(tempPath); // ذخیره روی دیسک
 
-    const zip = new AdmZip(tempPath);
-    const entries = zip.getEntries();
-    const jsonFiles = entries.filter(
-      (e) => !e.isDirectory && e.entryName.endsWith(".json"),
-    );
-
-    if (jsonFiles.length === 0) {
-      try { fs.unlinkSync(tempPath); } catch {}
-      return res.status(400).json({ success: false, message: "هیچ فایل JSON در ZIP یافت نشد" });
-    }
-
-    const allItems: { item: any; fileName: string; index: number }[] = [];
-    for (const entry of jsonFiles) {
-      try {
-        const content = entry.getData().toString("utf8");
-        const parsed = JSON.parse(content);
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        items.forEach((item, idx) =>
-          allItems.push({ item, fileName: entry.entryName, index: idx }),
-        );
-      } catch (parseErr: any) {
-        console.error(`❌ خطا در تجزیه فایل ${entry.entryName}:`, parseErr.message);
-      }
-    }
-
-    try { fs.unlinkSync(tempPath); } catch {}
-
-    if (allItems.length === 0)
-      return res.status(400).json({ success: false, message: "هیچ فایل JSON معتبری در ZIP یافت نشد" });
-
-    // ایجاد تسک
+    // ─── ایجاد تسک با اطلاعات فایل ───
     const task = await BulkTask.create({
       userId,
       status: "processing",
-      totalItems: allItems.length,
+      totalItems: 0,               // هنوز نمی‌دانیم چند آگهی داخل فایل است
       processed: 0,
       results: { success: 0, errors: 0, skipped: 0, watermarkApplied: 0, details: [] },
+      filePath: tempPath,          // مسیر فایل ZIP
     });
 
     const expertPhone = req.user.phone || "09120000000";
     const expertName =
       `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.phone;
 
-    // اجرای پردازش در پس‌زمینه
-    processAndSaveAdsAsync(
-      allItems,
-      userId.toString(),
-      expertPhone,
-      expertName,
-      req,
-      task._id.toString(),
-    )
-      .then((results) => {
-        BulkTask.findByIdAndUpdate(task._id, {
-          status: "completed",
-          processed: allItems.length,
-          results,
-        });
-      })
+    // ─── اجرای پردازش در پس‌زمینه (بدون await) ───
+    processZipFileAsync(task._id.toString(), tempPath, userId.toString(), expertPhone, expertName, req)
       .catch((err) => {
         console.error("Bulk processing fatal error:", err);
-        BulkTask.findByIdAndUpdate(task._id, {
-          status: "failed",
-          error: err.message,
-        });
+        BulkTask.findByIdAndUpdate(task._id, { status: "failed", error: err.message });
       });
 
+    // ─── پاسخ فوری ───
     return res.status(202).json({
       success: true,
       message: "فایل دریافت شد و در صف پردازش قرار گرفت.",
@@ -565,10 +523,93 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error("❌ Bulk upload error:", error);
-    if (!res.headersSent)
-      res.status(500).json({ success: false, message: "خطا در تزریق فله‌ای آگهی‌ها" });
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: "خطا در تزریق فله‌ای آگهی‌ها" });
+    }
   }
 };
+
+/* ──── پردازش ZIP از روی فایل ذخیره‌شده ──── */
+async function processZipFileAsync(
+  taskId: string,
+  zipFilePath: string,
+  userId: string,
+  expertPhone: string,
+  expertName: string,
+  req: AuthRequest,
+) {
+  let allItems: { item: any; fileName: string; index: number }[] = [];
+
+  try {
+    // باز کردن ZIP
+    const zip = new AdmZip(zipFilePath);
+    const entries = zip.getEntries();
+    const jsonFiles = entries.filter((e) => !e.isDirectory && e.entryName.endsWith(".json"));
+
+    if (jsonFiles.length === 0) {
+      await BulkTask.findByIdAndUpdate(taskId, {
+        status: "failed",
+        error: "هیچ فایل JSON در ZIP یافت نشد",
+      });
+      try { fs.unlinkSync(zipFilePath); } catch {}
+      return;
+    }
+
+    // استخراج آیتم‌ها
+    for (const entry of jsonFiles) {
+      try {
+        const content = entry.getData().toString("utf8");
+        const parsed = JSON.parse(content);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        items.forEach((item, idx) => allItems.push({ item, fileName: entry.entryName, index: idx }));
+      } catch (parseErr: any) {
+        console.error(`❌ خطا در تجزیه فایل ${entry.entryName}:`, parseErr.message);
+      }
+    }
+
+    if (allItems.length === 0) {
+      await BulkTask.findByIdAndUpdate(taskId, {
+        status: "failed",
+        error: "هیچ فایل JSON معتبری در ZIP یافت نشد",
+      });
+      try { fs.unlinkSync(zipFilePath); } catch {}
+      return;
+    }
+
+    // به‌روزرسانی تعداد کل
+    await BulkTask.findByIdAndUpdate(taskId, { totalItems: allItems.length });
+
+    // حذف فایل ZIP (دیگر نیاز نیست)
+    try { fs.unlinkSync(zipFilePath); } catch {}
+
+    // ─── شروع پردازش واقعی ───
+    const results = await processAndSaveAdsAsync(allItems, userId, expertPhone, expertName, req, taskId);
+
+    // ─── اتمام ───
+    await BulkTask.findByIdAndUpdate(taskId, {
+      status: "completed",
+      processed: allItems.length,
+      results,
+    });
+
+    if (results.success > 0) {
+      await sendNotificationToUser(
+        userId,
+        "تزریق فله‌ای انجام شد",
+        `${results.success} آگهی ایجاد و فعال شد.${results.watermarkApplied ? ` (${results.watermarkApplied} واترمارک)` : ""}${results.errors ? ` (${results.errors} خطا)` : ""}`,
+        "info",
+        "/panel/expert/bulk-upload",
+        results,
+      );
+    }
+
+    console.log(`🏁 پایان پردازش: ${results.success} موفق`);
+  } catch (err: any) {
+    console.error("Bulk processing fatal error:", err);
+    await BulkTask.findByIdAndUpdate(taskId, { status: "failed", error: err.message });
+    try { fs.unlinkSync(zipFilePath); } catch {}
+  }
+}
 
 /* ──── پردازش در پس‌زمینه ──── */
 async function processAndSaveAdsAsync(
@@ -579,13 +620,7 @@ async function processAndSaveAdsAsync(
   req: AuthRequest,
   taskId: string,
 ) {
-  const results = {
-    success: 0,
-    errors: 0,
-    skipped: 0,
-    watermarkApplied: 0,
-    details: [] as any[],
-  };
+  const results = { success: 0, errors: 0, skipped: 0, watermarkApplied: 0, details: [] as any[] };
   let processedCount = 0;
   const total = items.length;
 
@@ -598,49 +633,43 @@ async function processAndSaveAdsAsync(
           errors: results.errors,
           skipped: results.skipped,
           watermarkApplied: results.watermarkApplied,
-          details: results.details.slice(-300), // فقط ۳۰۰ خطای آخر
+          details: results.details.slice(-300),
         },
       },
     });
   };
 
-  await updateTask(); // صفر اولیه
+  await updateTask();
 
-  await asyncPool(5, items, async ({ item, fileName, index }) => {
+  // کاهش هم‌زمانی به ۳ برای پایداری بیشتر
+  await asyncPool(3, items, async ({ item, fileName, index }) => {
     const identifier = `${fileName}[${index}]`;
     try {
       let categoryId: string | undefined;
-      try {
-        categoryId = await detectCategory(item);
-      } catch {}
+      try { categoryId = await detectCategory(item); } catch {}
       if (!categoryId) {
         const fallback = await Category.findOne({ slug: "real-estate" });
         if (fallback) categoryId = fallback._id.toString();
       }
 
-      const payload = mapToAdPayload(
-        item,
-        userId,
-        categoryId || "000000000000000000000000",
-        expertPhone,
-        expertName,
-      );
+      const payload = mapToAdPayload(item, userId, categoryId || "000000000000000000000000", expertPhone, expertName);
 
       if (!isAdValid(payload)) {
         results.skipped++;
-        results.details.push({
-          row: identifier,
-          index: index + 1,
-          message: "ناکافی",
-        });
+        results.details.push({ row: identifier, index: index + 1, message: "ناکافی" });
         return;
       }
 
+      // پردازش تصاویر (با خطاگیری)
       if (payload.images?.length) {
-        payload.images = await processAdImages(payload.images, index);
-        results.watermarkApplied += payload.images.filter((img) =>
-          img.includes("/uploads/ads/bulk-"),
-        ).length;
+        try {
+          payload.images = await processAdImages(payload.images, index);
+          results.watermarkApplied += payload.images.filter(img => img.includes("/uploads/ads/bulk-")).length;
+        } catch (imgErr: any) {
+          console.error(`خطا در تصاویر آگهی ${identifier}:`, imgErr.message);
+          // بدون رد کردن آگهی، تصاویر را به URL اصلی برمی‌گردانیم (فقط urlهای سالم)
+          payload.images = payload.images.filter((url: string) => url);
+        }
       }
 
       const ad = new Ad(payload);
@@ -659,11 +688,7 @@ async function processAndSaveAdsAsync(
       results.success++;
     } catch (err: any) {
       results.errors++;
-      results.details.push({
-        row: identifier,
-        index: index + 1,
-        message: err.message,
-      });
+      results.details.push({ row: identifier, index: index + 1, message: err.message });
     } finally {
       processedCount++;
       if (processedCount % 50 === 0 || processedCount === total) {
@@ -672,19 +697,7 @@ async function processAndSaveAdsAsync(
     }
   });
 
-  await updateTask(); // نهایی
-
-  if (results.success > 0) {
-    await sendNotificationToUser(
-      userId,
-      "تزریق فله‌ای انجام شد",
-      `${results.success} آگهی ایجاد و فعال شد.${results.watermarkApplied ? ` (${results.watermarkApplied} واترمارک)` : ""}${results.errors ? ` (${results.errors} خطا)` : ""}`,
-      "info",
-      "/panel/expert/bulk-upload",
-      results,
-    );
-  }
-
-  console.log(`🏁 پایان پردازش: ${results.success} موفق`);
+  await updateTask();
   return results;
 }
+
