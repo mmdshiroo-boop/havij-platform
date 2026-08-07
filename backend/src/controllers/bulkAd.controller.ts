@@ -12,6 +12,7 @@ import { sendNotificationToUser } from "../services/notification.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { detectCategory } from "../services/categoryMatcher.service";
 import { Category } from "../models";
+import { BulkTask } from "../models/BulkTask.model";   // ← جدید
 
 // ══════════════════════════════════════════════
 // ۰. تنظیمات واترمارک + کش
@@ -207,7 +208,7 @@ async function downloadAndWatermarkImage(
 }
 
 // ══════════════════════════════════════════════
-// ۰.۴ پردازش همه تصاویر یک آگهی (۴ تایی هم‌زمان)
+// ۰.۴ پردازش همه تصاویر یک آگهی (۸ تایی هم‌زمان)
 // ══════════════════════════════════════════════
 
 async function processAdImages(
@@ -215,7 +216,7 @@ async function processAdImages(
   adIndex: number,
 ): Promise<string[]> {
   if (!Array.isArray(images) || images.length === 0) return images;
-  return asyncPool(4, images, (url, idx) =>
+  return asyncPool(8, images, (url, idx) =>
     downloadAndWatermarkImage(url, adIndex, idx),
   );
 }
@@ -527,7 +528,7 @@ function mapToAdPayload(
 }
 
 // ══════════════════════════════════════════════
-// ۳. کنترلر اصلی
+// ۳. کنترلر اصلی (اصلاح‌شده)
 // ══════════════════════════════════════════════
 
 export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
@@ -595,31 +596,54 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
     } catch {}
 
     if (allItems.length === 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "هیچ فایل JSON معتبری در ZIP یافت نشد",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "هیچ فایل JSON معتبری در ZIP یافت نشد",
+      });
     }
+
+    // ─── ایجاد تسک ───
+    const task = await BulkTask.create({
+      userId,
+      status: "processing",
+      totalItems: allItems.length,
+      processed: 0,
+      results: { success: 0, errors: 0, skipped: 0, watermarkApplied: 0, details: [] },
+    });
 
     const expertPhone = req.user.phone || "09120000000";
     const expertName =
       `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
       req.user.phone;
 
-    const results = await processAndSaveAds(
+    // ─── اجرای پردازش در پس‌زمینه (بدون await) ───
+    processAndSaveAdsAsync(
       allItems,
       userId.toString(),
       expertPhone,
       expertName,
       req,
-    );
+      task._id.toString(),
+    )
+      .then((results) => {
+        BulkTask.findByIdAndUpdate(task._id, {
+          status: "completed",
+          processed: allItems.length,
+          results,
+        });
+      })
+      .catch((err) => {
+        BulkTask.findByIdAndUpdate(task._id, {
+          status: "failed",
+          error: err.message,
+        });
+      });
 
-    return res.status(201).json({
+    // ─── پاسخ فوری به کلاینت ───
+    return res.status(202).json({
       success: true,
-      message: `تزریق فله‌ای انجام شد: ${results.success} موفق، ${results.watermarkApplied} واترمارک، ${results.skipped} رد شده، ${results.errors} خطا`,
-      data: results,
+      message: "فایل دریافت شد و در صف پردازش قرار گرفت.",
+      taskId: task._id,
     });
   } catch (error: any) {
     console.error("❌ Bulk upload error:", error);
@@ -632,15 +656,16 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
 };
 
 // ══════════════════════════════════════════════
-// ۴. پردازش نهایی (۴ آگهی هم‌زمان)
+// ۴. پردازش نهایی (۱۰ آگهی هم‌زمان)
 // ══════════════════════════════════════════════
 
-async function processAndSaveAds(
+async function processAndSaveAdsAsync(
   items: { item: any; fileName: string; index: number }[],
   userId: string,
   expertPhone: string,
   expertName: string,
   req: AuthRequest,
+  taskId: string,
 ) {
   const results = {
     success: 0,
@@ -650,7 +675,7 @@ async function processAndSaveAds(
     details: [] as any[],
   };
 
-  await asyncPool(4, items, async ({ item, fileName, index }) => {
+  await asyncPool(10, items, async ({ item, fileName, index }) => {
     const identifier = `${fileName}[${index}]`;
     try {
       let categoryId: string | undefined;

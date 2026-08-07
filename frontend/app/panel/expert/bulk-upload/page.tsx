@@ -22,7 +22,7 @@ import {
   Zap,
   Loader2,
 } from "lucide-react";
-import apiClient from "@/services/api/client"; // ✅ اصلاح import
+import apiClient from "@/services/api/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +36,8 @@ const itemVariants = {
   show: { opacity: 1, y: 0 },
 };
 
-// کامپوننت کوچک برای انیمیشن شمارنده
 function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(0);
-
   useEffect(() => {
     if (value === 0) {
       setDisplay(0);
@@ -58,7 +56,6 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
     }, 16);
     return () => clearInterval(timer);
   }, [value, duration]);
-
   return <span>{display.toLocaleString()}</span>;
 }
 
@@ -68,6 +65,7 @@ export default function BulkUploadPage() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [taskId, setTaskId] = useState<string | null>(null);   // ★ جدید
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File | null) => {
@@ -75,6 +73,7 @@ export default function BulkUploadPage() {
       setFile(f);
       setResult(null);
       setProgress(0);
+      setTaskId(null); // ریست تسک قبلی
     } else if (f) {
       toast.error("فقط فایل‌های ZIP مجاز هستند.");
     }
@@ -94,13 +93,14 @@ export default function BulkUploadPage() {
     if (!file) return;
     setUploading(true);
     setProgress(0);
+    setResult(null);
     const formData = new FormData();
     formData.append("zipFile", file);
 
     try {
       const res = await apiClient.post("/expert/bulk-ads", formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 600000,
+        timeout: 600000, // فقط برای آپلود فایل
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const pct = Math.round(
@@ -110,26 +110,50 @@ export default function BulkUploadPage() {
           }
         },
       });
-      setResult(res.data.data);
-      toast.success(res.data.message || "تزریق با موفقیت انجام شد");
+      // دریافت taskId و اتمام آپلود
+      setTaskId(res.data.taskId);
       setProgress(100);
+      toast.success(res.data.message || "فایل دریافت شد. در حال پردازش...");
     } catch (err: any) {
       if (err.code === "ECONNABORTED") {
-        toast.error(
-          "مدت زمان درخواست به پایان رسید. لطفاً فایل کوچک‌تری انتخاب کنید.",
-        );
+        toast.error("مدت زمان درخواست به پایان رسید.");
       } else {
-        toast.error(err.response?.data?.message || "خطا در تزریق فایل");
+        toast.error(err.response?.data?.message || "خطا در ارسال فایل");
       }
     } finally {
       setUploading(false);
     }
   };
 
+  // Polling برای دریافت نتیجه
+  useEffect(() => {
+    if (!taskId) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await apiClient.get(`/expert/bulk-ads/${taskId}/status`);
+        if (data.data.status === "completed") {
+          setResult(data.data.results);
+          toast.success("پردازش کامل شد");
+          clearInterval(interval);
+          setTaskId(null);
+        } else if (data.data.status === "failed") {
+          toast.error(data.data.error || "خطا در پردازش");
+          clearInterval(interval);
+          setTaskId(null);
+        }
+        // می‌توانید درصد پیشرفت پردازش را نیز نمایش دهید (با data.data.processed / data.data.totalItems)
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [taskId]);
+
   const clearFile = () => {
     setFile(null);
     setResult(null);
     setProgress(0);
+    setTaskId(null);
   };
 
   const formatSize = (bytes: number) => {
@@ -174,6 +198,12 @@ export default function BulkUploadPage() {
           </Button>
         )}
         {file && uploading && (
+          <Badge variant="secondary" className="h-10 px-5 text-sm font-bold border-border/60">
+            <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+            در حال ارسال...
+          </Badge>
+        )}
+        {taskId && (
           <Badge variant="secondary" className="h-10 px-5 text-sm font-bold border-border/60">
             <Loader2 className="w-4 h-4 ml-2 animate-spin" />
             در حال پردازش...
@@ -256,15 +286,24 @@ export default function BulkUploadPage() {
                   {uploading && (
                     <div className="mt-5 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">در حال آپلود</span>
+                        <span className="text-muted-foreground">در حال آپلود فایل</span>
                         <span className="tabular-nums font-mono font-bold text-primary">
                           {progress}%
                         </span>
                       </div>
                       <Progress value={progress} className="h-2" />
-                      <p className="text-xs text-muted-foreground text-center">
-                        لطفاً تا پایان عملیات صبر کنید
-                      </p>
+                    </div>
+                  )}
+
+                  {taskId && (
+                    <div className="mt-5 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">در حال پردازش آگهی‌ها</span>
+                        <span className="tabular-nums font-mono font-bold text-primary">
+                          <Loader2 className="w-3.5 h-3.5 inline animate-spin ml-1" />
+                        </span>
+                      </div>
+                      <Progress value={100} className="h-2" />
                     </div>
                   )}
                 </motion.div>
