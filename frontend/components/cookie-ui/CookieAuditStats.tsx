@@ -68,7 +68,9 @@ export default function CookieAuditStatsCard() {
     const fetchStats = async () => {
       try {
         const res = await cookieAuditService.getStats();
-        setStats(res.data);
+        // پاسخ ممکن است داخل data باشد
+        const data = res.data || res;
+        setStats(data);
       } catch (e) {
         console.error("Stats fetch error:", e);
       } finally {
@@ -85,7 +87,7 @@ export default function CookieAuditStatsCard() {
     socket.on("cookie-audit:new", () => {
       setLivePulse(true);
       setTimeout(() => setLivePulse(false), 1500);
-      fetchStats();
+      fetchStats(); // به‌روزرسانی دوباره آمار
     });
 
     return () => {
@@ -130,35 +132,40 @@ export default function CookieAuditStatsCard() {
   const statCards: StatCardData[] = [
     {
       title: "کل لاگین‌ها",
-      value: stats.totalLogins,
+      value: stats.totalLogins ?? 0,
       icon: LogIn,
       color: "text-primary",
       bg: "bg-primary/10",
     },
     {
       title: "موارد مشکوک (۲۴h)",
-      value: stats.suspiciousLast24h,
+      value: stats.suspiciousLast24h ?? 0,
       icon: ShieldAlert,
       color: "text-destructive",
       bg: "bg-destructive/10",
       warn: true,
-      border: stats.suspiciousLast24h > 0 ? "ring-2 ring-destructive/30" : "",
+      border:
+        (stats.suspiciousLast24h ?? 0) > 0
+          ? "ring-2 ring-destructive/30"
+          : "",
     },
     {
       title: "نشست‌های فعال",
-      value: stats.activeSessionCount,
+      value: stats.activeSessionCount ?? 0,
       icon: Radio,
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-500/10",
     },
     {
       title: "IPهای یکتا",
-      value: stats.uniqueIPs,
+      value: stats.uniqueIPs ?? 0,
       icon: Globe,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-500/10",
     },
   ];
+
+  const recentSuspicious = stats.recentSuspicious || [];
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -206,7 +213,7 @@ export default function CookieAuditStatsCard() {
       </div>
 
       {/* موارد مشکوک اخیر */}
-      {stats.recentSuspicious.length > 0 && (
+      {recentSuspicious.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -218,20 +225,24 @@ export default function CookieAuditStatsCard() {
                 <ShieldAlert className="w-5 h-5 text-destructive" />
                 <span className="text-sm font-black">موارد مشکوک اخیر</span>
                 <Badge variant="destructive" className="text-[10px] mr-auto">
-                  {stats.recentSuspicious.length} مورد
+                  {recentSuspicious.length} مورد
                 </Badge>
               </div>
             </div>
             <CardContent className="p-0">
               <div className="divide-y divide-border/50">
-                {stats.recentSuspicious.map((item: any) => (
+                {recentSuspicious.map((item: any) => (
                   <div
                     key={item._id}
                     className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Fingerprint className="w-4 h-4 text-destructive/60 shrink-0" />
-                      <span className="font-medium truncate">{item.user}</span>
+                      <span className="font-medium truncate">
+                        {item.user || (item.userId?.firstName
+                          ? `${item.userId.firstName} ${item.userId.lastName || ""}`.trim()
+                          : item.ip)}
+                      </span>
                     </div>
                     <span
                       className="text-xs font-mono text-muted-foreground shrink-0"

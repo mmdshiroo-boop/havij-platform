@@ -1,3 +1,5 @@
+// lib/iranLocations.ts
+
 export interface Province {
   id: number;
   name: string;
@@ -7,6 +9,8 @@ export interface City {
   id: number;
   province_id: number;
   name: string;
+  lat?: number;   // مختصات اختیاری
+  lng?: number;   // مختصات اختیاری
 }
 
 // لیست کامل ۳۱ استان ایران

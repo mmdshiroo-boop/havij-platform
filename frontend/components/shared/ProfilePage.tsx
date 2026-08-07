@@ -459,20 +459,15 @@ export default function ProfilePage({
             <div className="relative h-32 bg-gradient-to-br from-primary/20 via-transparent to-transparent" />
             <div className="px-6 pb-6 pt-0 flex flex-col items-center text-center -mt-16">
               <div className="relative group rounded-full p-1 bg-background shadow-xl mb-5">
-                <Avatar className="w-32 h-32 rounded-full border-4 border-background object-cover">
-                  <AvatarImage
-                    key={avatarKey}
-                    src={avatarSrc}
-                    className="object-cover"
-                  />
-                  <AvatarFallback>
-                    <img
-                      src="/images/user.webp"
-                      alt="avatar"
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  </AvatarFallback>
-                </Avatar>
+             <Avatar className="w-32 h-32 rounded-full border-4 border-background object-cover">
+  <AvatarImage
+    key={avatarKey}
+    src={avatarSrc || "/images/user.webp"}
+    alt="تصویر کاربر"
+    className="object-cover"
+  />
+  <AvatarFallback />
+</Avatar>
 
                 <div className="absolute inset-1 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
                   <button

@@ -391,21 +391,21 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
 
   return (
     <div ref={menuRef} className="relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="rounded-full p-0 h-9 w-9 md:h-10 md:w-10 ring-2 ring-transparent hover:ring-primary/30 transition-all"
-        onClick={() => setOpen(!open)}
-        aria-label="منوی کاربری"
-      >
-        <Avatar className="h-full w-full">
-          <AvatarImage src={avatarSrc} className="object-cover" />
-          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm md:text-base">
-            {/* در صورت خطای بارگذاری تصویر پیش‌فرض، حروف نمایش داده می‌شود */}
-            {getInitials()}
-          </AvatarFallback>
-        </Avatar>
-      </Button>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="rounded-full p-0 h-9 w-9 md:h-10 md:w-10 ring-2 ring-transparent hover:ring-primary/30 transition-all"
+  onClick={() => setOpen(!open)}
+  aria-label="منوی کاربری"
+>
+  <Avatar className="h-full w-full">
+    <AvatarImage
+      src={avatarSrc || "/images/user.webp"}
+      className="object-cover"
+    />
+    <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm md:text-base" />
+  </Avatar>
+</Button>
 
       <AnimatePresence>
         {open && (
@@ -417,34 +417,35 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
             className="absolute top-full mt-2 left-0 w-72 rounded-2xl bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl shadow-black/5 dark:shadow-white/5 z-50 overflow-hidden"
           >
             {/* هدر پروفایل */}
-            <div className="p-4 border-b border-border/40 bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-                  <AvatarImage src={avatarSrc} className="object-cover" />
-                  <AvatarFallback className="bg-primary/10 text-primary font-black">
-                    {getInitials()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold truncate">
-                    {getDisplayName()}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.phone || "بدون شماره"}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 flex justify-between items-center">
-                {roleBadge()}
-                <Link
-                  href={`/panel/${roleForUrl}/profile`}
-                  onClick={() => setOpen(false)}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  ویرایش پروفایل
-                </Link>
-              </div>
-            </div>
+           <div className="p-4 border-b border-border/40 bg-muted/30">
+  <div className="flex items-center gap-3">
+    <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+      <AvatarImage
+        src={avatarSrc || "/images/user.webp"}
+        className="object-cover"
+      />
+      <AvatarFallback className="bg-primary/10 text-primary font-black" />
+    </Avatar>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-extrabold truncate">
+        {getDisplayName()}
+      </p>
+      <p className="text-xs text-muted-foreground truncate">
+        {user.phone || "بدون شماره"}
+      </p>
+    </div>
+  </div>
+  <div className="mt-3 flex justify-between items-center">
+    {roleBadge()}
+    <Link
+      href={`/panel/${roleForUrl}/profile`}
+      onClick={() => setOpen(false)}
+      className="text-xs font-medium text-primary hover:underline"
+    >
+      ویرایش پروفایل
+    </Link>
+  </div>
+</div>
 
             {/* لینک‌های منو */}
             <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">

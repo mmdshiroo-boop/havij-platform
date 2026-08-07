@@ -13,7 +13,6 @@ export const cookieAuditMiddleware = async (
       const ua = req.headers["user-agent"] || "unknown";
       const fingerprint = CookieMonitorService.generateFingerprint(ip, ua);
 
-      // بررسی فعالیت مشکوک
       await CookieMonitorService.checkSuspiciousActivity(
         req.sessionId,
         fingerprint,
@@ -21,7 +20,6 @@ export const cookieAuditMiddleware = async (
         ua,
       );
 
-      // ثبت session_check برای درخواست‌های GET (جهت جلوگیری از overload)
       if (req.method === "GET") {
         await CookieMonitorService.logEvent({
           userId: req.user._id?.toString() || req.user.id,
@@ -31,12 +29,18 @@ export const cookieAuditMiddleware = async (
           userAgent: ua,
           cookieName: "access_token",
           status: "success",
+          navigation: {                         
+            currentPath: req.originalUrl,       
+            referrer: (req.headers["referer"] as string) || "",
+          },
+          cookieData: {                  
+            name: "access_token",              
+          },
         });
       }
     }
   } catch (err) {
     console.error("Cookie audit middleware error:", err);
-    // ادامه می‌دهیم تا API از کار نیفتد
   }
   next();
 };

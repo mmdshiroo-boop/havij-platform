@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatCard } from "@/components/ui/stat-card";
 import {
   Users,
   FileText,
@@ -16,6 +16,12 @@ import {
   ArrowUpRight,
   Calendar,
   RefreshCw,
+  TrendingUp,
+  MapPin,
+  ImageIcon,
+  CheckCircle,
+  XCircle,
+  LayoutDashboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -23,6 +29,139 @@ import {
   adminPanelApi,
   AdminDashboardStats,
 } from "@/services/api/admin-panel.api";
+import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/getImageUrl";
+
+
+const STATUS_MAP: Record<
+  string,
+  { label: string; color: string; icon: React.ComponentType<any> }
+> = {
+  active: {
+    label: "منتشرشده",
+    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    icon: CheckCircle,
+  },
+  pending: {
+    label: "در انتظار",
+    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    icon: Clock,
+  },
+  rejected: {
+    label: "رد شده",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    icon: XCircle,
+  },
+  expired: {
+    label: "منقضی",
+    color: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+    icon: Clock,
+  },
+};
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  description?: string;
+  href?: string;
+  trend?: number;
+  color?: string;
+}
+
+function DashboardStatCard({
+  title,
+  value,
+  icon: Icon,
+  description,
+  href,
+  trend,
+  color = "text-primary",
+}: StatCardProps) {
+  const content = (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-5",
+        "shadow-sm hover:shadow-md transition-all duration-300",
+        "group",
+        href && "cursor-pointer",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+            {title}
+          </p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground mt-1 tabular-nums">
+            {typeof value === "number" ? value.toLocaleString("fa-IR") : value}
+          </p>
+          {description && (
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5">
+              {description}
+            </p>
+          )}
+          {trend !== undefined && trend !== 0 && (
+            <div
+              className={cn(
+                "flex items-center gap-1 mt-2 text-[10px] sm:text-xs font-bold",
+                trend > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-500",
+              )}
+            >
+              <TrendingUp
+                className={cn(
+                  "w-3 h-3",
+                  trend < 0 && "rotate-180",
+                )}
+              />
+              {Math.abs(trend)}% نسبت به ماه قبل
+            </div>
+          )}
+        </div>
+
+        <div
+          className={cn(
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0",
+            "bg-primary/10 group-hover:bg-primary/15 transition-colors",
+          )}
+        >
+          <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", color)} />
+        </div>
+      </div>
+
+      {href && (
+        <div className="absolute bottom-2 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-5 sm:space-y-6" dir="rtl">
+      <Skeleton className="h-28 sm:h-32 rounded-2xl" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 sm:h-36 rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="h-80 rounded-2xl" />
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats>({
@@ -46,19 +185,17 @@ export default function AdminDashboardPage() {
     setError(null);
 
     try {
-      // دریافت آمار
       const dashboardStats = await adminPanelApi.getDashboardStats();
       setStats(dashboardStats);
 
-      // دریافت آخرین آگهی‌ها
-      const adsRes = await adminPanelApi.getAllAds({ limit: 5 });
+      const adsRes = await adminPanelApi.getAllAds({ limit: 6 });
       setRecentAds(adsRes.data || []);
     } catch (err: any) {
       console.error("Error fetching admin data:", err);
       if (err.response?.status === 403) {
-        setError("شما دسترسی ادمین ندارید. لطفاً با مدیر سیستم تماس بگیرید.");
+        setError("شما دسترسی ادمین ندارید.");
       } else {
-        setError("خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.");
+        setError("خطا در دریافت اطلاعات.");
       }
     } finally {
       setLoading(false);
@@ -75,33 +212,18 @@ export default function AdminDashboardPage() {
     toast.success("داشبورد به‌روزرسانی شد");
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4 sm:space-y-6" dir="rtl">
-        <Skeleton className="h-20 sm:h-24 rounded-xl sm:rounded-2xl" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton
-              key={i}
-              className="h-28 sm:h-32 rounded-xl sm:rounded-2xl"
-            />
-          ))}
-        </div>
-        <Skeleton className="h-80 sm:h-96 rounded-xl sm:rounded-2xl" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   if (error && stats.totalUsers === 0 && stats.totalAds === 0) {
     return (
       <div
-        className="flex flex-col items-center justify-center min-h-[60vh] gap-4"
+        className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4"
         dir="rtl"
       >
         <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center">
           <AlertCircle className="w-8 h-8 text-destructive" />
         </div>
-        <p className="text-muted-foreground font-medium">{error}</p>
+        <p className="text-sm text-muted-foreground text-center">{error}</p>
         <Button
           onClick={() => fetchData(true)}
           variant="outline"
@@ -115,183 +237,270 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 md:space-y-8" dir="rtl">
-      {/* هدر خوش‌آمدگویی */}
+    <div className="space-y-5 sm:space-y-6 lg:space-y-8 pb-8" dir="rtl">
+      {/* ═══ هدر ═══ */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-4 sm:p-6 md:p-8"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/40 bg-gradient-to-br from-primary/10 via-background to-primary/5 dark:from-primary/5 dark:via-background dark:to-primary/3 p-5 sm:p-6 lg:p-8"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 bg-primary/20 rounded-full blur-2xl sm:blur-3xl" />
+        <div className="absolute -top-20 -left-20 w-52 h-52 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
-              داشبورد مدیریت
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              خوش آمدید. امروز{" "}
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <LayoutDashboard className="w-5 h-5 text-primary" />
+              </div>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-foreground">
+                داشبورد مدیریت
+              </h1>
+            </div>
+
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {new Date().toLocaleDateString("fa-IR", {
+                weekday: "long",
                 year: "numeric",
                 month: "long",
                 day: "numeric",
               })}
             </p>
-            <div className="flex items-center gap-2 mt-3 sm:mt-4">
-              <div className="flex -space-x-2">
+
+            <div className="flex items-center gap-3 mt-3">
+              <div className="flex -space-x-1.5">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center"
+                    className="w-7 h-7 rounded-full bg-primary/15 border-2 border-background flex items-center justify-center"
                   >
-                    <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                    <UserCheck className="w-3.5 h-3.5 text-primary" />
                   </div>
                 ))}
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-bold text-foreground">
-                  {stats.activeUsers}
+                  {stats.activeUsers.toLocaleString("fa-IR")}
                 </span>{" "}
                 کاربر فعال
               </p>
             </div>
           </div>
+
           <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="gap-2 rounded-xl self-end sm:self-auto"
+            className="gap-2 rounded-xl self-start sm:self-auto text-xs font-bold"
           >
             <RefreshCw
-              className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+              className={cn("w-3.5 h-3.5", refreshing && "animate-spin")}
             />
             بروزرسانی
           </Button>
         </div>
       </motion.div>
 
-      {/* کارت‌های آماری با StatCard */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* ═══ کارت‌های آماری ═══ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.08 }}
         >
-          <StatCard
+          <DashboardStatCard
             title="کل کاربران"
-            value={stats.totalUsers.toLocaleString()}
+            value={stats.totalUsers}
             icon={Users}
-            href="/admin/users"
-            description={`${stats.activeUsers} کاربر فعال`}
+            href="/panel/admin/users"
+            description={`${stats.activeUsers.toLocaleString("fa-IR")} فعال`}
+            trend={stats.userGrowth}
           />
         </motion.div>
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14 }}
+        >
+          <DashboardStatCard
+            title="کل آگهی‌ها"
+            value={stats.totalAds}
+            icon={FileText}
+            href="/panel/admin/ads"
+            description={`${stats.publishedAds.toLocaleString("fa-IR")} منتشرشده`}
+            trend={stats.adGrowth}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <StatCard
-            title="کل آگهی‌ها"
-            value={stats.totalAds.toLocaleString()}
-            icon={FileText}
-            href="/admin/ads"
-            description={`${stats.publishedAds} آگهی منتشر شده`}
-          />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <StatCard
-            title="کل بازدیدها"
-            value={stats.totalViews.toLocaleString()}
+          <DashboardStatCard
+            title="بازدید کل"
+            value={stats.totalViews}
             icon={Eye}
-            description="بازدید کل آگهی‌ها"
+            description="مجموع بازدید آگهی‌ها"
           />
         </motion.div>
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.26 }}
         >
-          <StatCard
+          <DashboardStatCard
             title="در انتظار تأیید"
-            value={stats.pendingAds.toLocaleString()}
+            value={stats.pendingAds}
             icon={Clock}
-            href="/admin/ads?status=pending"
+            href="/panel/admin/ads?status=pending"
             description="نیاز به بررسی"
+            color="text-amber-500"
           />
         </motion.div>
       </div>
 
-      {/* آخرین آگهی‌ها */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="p-4 sm:p-6 flex flex-row items-center justify-between">
-          <CardTitle className="text-base sm:text-lg">
-            آخرین آگهی‌های ثبت شده
-          </CardTitle>
-          <Link href="/admin/ads">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs sm:text-sm"
-            >
-              مشاهده همه
-              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="space-y-2 sm:space-y-3">
+      {/* ═══ آخرین آگهی‌ها ═══ */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.32 }}
+      >
+        <Card className="border border-border/60 shadow-sm rounded-2xl overflow-hidden">
+          <CardHeader className="p-4 sm:p-5 lg:p-6 flex flex-row items-center justify-between border-b border-border/40 bg-muted/20">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <FileText className="w-4 h-4 text-primary" />
+              </div>
+              <CardTitle className="text-sm sm:text-base font-extrabold">
+                آخرین آگهی‌ها
+              </CardTitle>
+            </div>
+            <Link href="/panel/admin/ads">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground rounded-xl"
+              >
+                مشاهده همه
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+          </CardHeader>
+
+          <CardContent className="p-3 sm:p-4 lg:p-5">
             {recentAds.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 text-muted-foreground">
-                <FileText className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-50" />
-                <p className="text-sm sm:text-base">هیچ آگهی یافت نشد</p>
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">هیچ آگهی یافت نشد</p>
               </div>
             ) : (
-              recentAds.map((ad, i) => (
-                <motion.div
-                  key={ad._id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all gap-3"
-                >
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm sm:text-base truncate">
-                        {ad.title}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(ad.createdAt).toLocaleDateString("fa-IR")}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {ad.views || 0} بازدید
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right sm:text-left shrink-0">
-                    <p className="font-bold text-primary text-sm sm:text-base">
-                      {ad.price?.toLocaleString()} تومان
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                      {ad.city}
-                    </p>
-                  </div>
-                </motion.div>
-              ))
+              <div className="space-y-2 sm:space-y-2.5">
+                <AnimatePresence>
+                  {recentAds.map((ad, i) => {
+                    const firstImage = ad.images?.[0];
+                    const imgSrc = firstImage
+                      ? getImageUrl(firstImage)
+                      : null;
+                    const statusInfo =
+                      STATUS_MAP[ad.status] || STATUS_MAP.pending;
+                    const StatusIcon = statusInfo.icon;
+
+                    return (
+                      <motion.div
+                        key={ad._id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                      >
+                        <Link
+                          href={`/ad/${ad._id}`}
+                          className="block"
+                        >
+                          <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-border/40 bg-background hover:bg-muted/30 hover:border-primary/20 transition-all group">
+                            {/* تصویر آگهی */}
+                            <div className="relative w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-xl overflow-hidden bg-muted/30 shrink-0">
+                              {imgSrc ? (
+                                <img
+                                  src={imgSrc}
+                                  alt={ad.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="w-5 h-5 text-muted-foreground/30" />
+                                </div>
+                              )}
+
+                              {ad.isUrgent && (
+                                <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                                  فوری
+                                </span>
+                              )}
+                            </div>
+
+                            {/* اطلاعات آگهی */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                                  {ad.title}
+                                </h4>
+
+                                {/* وضعیت */}
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[9px] sm:text-[10px] font-bold shrink-0 gap-1 px-1.5 py-0.5 rounded-lg",
+                                    statusInfo.color,
+                                  )}
+                                >
+                                  <StatusIcon className="w-2.5 h-2.5" />
+                                  {statusInfo.label}
+                                </Badge>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                                {ad.city && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {ad.city}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(ad.createdAt).toLocaleDateString("fa-IR")}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {(ad.views || 0).toLocaleString("fa-IR")}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* قیمت */}
+                            <div className="text-left shrink-0 hidden sm:block">
+                              <p className="text-xs sm:text-sm font-black text-foreground">
+                                {ad.price
+                                  ? `${ad.price.toLocaleString("fa-IR")} تومان`
+                                  : "توافقی"}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

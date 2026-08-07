@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { categoryApi, Category } from "@/services/api/category.api";
 import { CreateAdData } from "@/services/api/ads.api";
-import { Textarea } from "../ui/textarea";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronLeft,
   FileText,
@@ -29,6 +31,16 @@ interface BasicInfoStepProps {
   updateData: (data: Partial<CreateAdData>) => void;
   onNext: () => void;
 }
+
+const AD_TYPES = [
+  { value: "sale", label: "فروش" },
+  { value: "rent", label: "اجاره" },
+  { value: "mortgage", label: "رهن و اجاره" },
+  { value: "daily_rent", label: "اجاره روزانه" },
+  { value: "exchange", label: "معاوضه" },
+  { value: "presale", label: "پیش‌فروش" },
+  { value: "construction", label: "مشارکت در ساخت" },
+];
 
 export function BasicInfoStep({
   data,
@@ -47,6 +59,17 @@ export function BasicInfoStep({
       .finally(() => setLoading(false));
   }, []);
 
+  // ساخت درخت دسته‌بندی — والدها + فرزندان
+  const categoryTree = useMemo(() => {
+    const parents = categories.filter((c) => !c.parentId);
+    const children = categories.filter((c) => !!c.parentId);
+
+    return parents.map((parent) => ({
+      ...parent,
+      children: children.filter((c) => c.parentId === parent._id),
+    }));
+  }, [categories]);
+
   const formatPrice = (value: number | undefined) => {
     if (!value) return "";
     return new Intl.NumberFormat("fa-IR").format(value);
@@ -59,14 +82,16 @@ export function BasicInfoStep({
     else if (data.title.length < 5)
       newErrors.title = "عنوان باید حداقل ۵ کاراکتر باشد";
 
-    if (!data.categoryId) newErrors.categoryId = "انتخاب دسته‌بندی الزامی است";
+    if (!data.categoryId)
+      newErrors.categoryId = "انتخاب دسته‌بندی الزامی است";
 
     if (data.priceType !== "negotiable") {
       if (!data.price || data.price <= 0)
         newErrors.price = "قیمت معتبر وارد کنید";
     }
 
-    if (!data.description?.trim()) newErrors.description = "توضیحات الزامی است";
+    if (!data.description?.trim())
+      newErrors.description = "توضیحات الزامی است";
     else if (data.description.length < 20)
       newErrors.description = "توضیحات حداقل ۲۰ کاراکتر باشد";
 
@@ -84,19 +109,16 @@ export function BasicInfoStep({
     <div className="space-y-6" dir="rtl">
       {/* عنوان */}
       <div className="space-y-1.5">
-        <Label
-          htmlFor="title"
-          className="text-xs font-bold flex items-center gap-1.5"
-        >
+        <Label htmlFor="title" className="text-xs font-bold flex items-center gap-1.5">
           <Tag className="w-3.5 h-3.5 text-muted-foreground" />
           عنوان آگهی <span className="text-destructive">*</span>
         </Label>
         <Input
           id="title"
-          placeholder="مثال: گوشی آیفون ۱۳ پرومکس ۲۵۶ گیگ / استخدام برنامه‌نویس وب"
+          placeholder="مثال: آپارتمان ۱۰۰ متری / گوشی آیفون ۱۵ / استخدام برنامه‌نویس"
           value={data.title || ""}
           onChange={(e) => updateData({ title: e.target.value })}
-          className="h-11 rounded-xl text-xs sm:text-sm"
+          className="h-11 rounded-xl text-sm"
         />
         {errors.title && (
           <p className="text-xs font-bold text-destructive flex items-center gap-1">
@@ -106,7 +128,7 @@ export function BasicInfoStep({
         )}
       </div>
 
-      {/* دسته‌بندی و نوع معامله */}
+      {/* دسته‌بندی و نوع آگهی */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs font-bold flex items-center gap-1.5">
@@ -117,23 +139,41 @@ export function BasicInfoStep({
             value={data.categoryId || ""}
             onValueChange={(val) => updateData({ categoryId: val })}
           >
-            <SelectTrigger className="h-11 rounded-xl bg-background border-border font-semibold text-xs sm:text-sm">
-              <SelectValue placeholder="انتخاب دسته‌بندی" />
+            <SelectTrigger className="h-11 rounded-xl bg-background border-border text-sm">
+              <SelectValue placeholder={loading ? "در حال دریافت..." : "انتخاب دسته‌بندی"} />
             </SelectTrigger>
-            <SelectContent className="rounded-xl max-h-60 overflow-y-auto">
+            <SelectContent className="rounded-xl max-h-72 overflow-y-auto">
               {loading ? (
-                <SelectItem value="loading" disabled>
-                  در حال دریافت...
-                </SelectItem>
+                <SelectItem value="loading" disabled>در حال دریافت...</SelectItem>
               ) : (
-                categories.map((cat) => (
-                  <SelectItem
-                    key={cat._id}
-                    value={cat._id}
-                    className="rounded-lg text-xs sm:text-sm"
-                  >
-                    {cat.parentId ? `ــ ${cat.name}` : `• ${cat.name}`}
-                  </SelectItem>
+                categoryTree.map((parent) => (
+                  <SelectGroup key={parent._id}>
+                    {/* والد — غیر قابل انتخاب به عنوان گروه‌بندی */}
+                    <SelectLabel className="text-xs font-black text-foreground/70 flex items-center gap-1.5 px-2 py-1.5">
+                      {parent.icon && <span>{parent.icon}</span>}
+                      {parent.name}
+                    </SelectLabel>
+
+                    {parent.children.length > 0 ? (
+                      parent.children.map((child) => (
+                        <SelectItem
+                          key={child._id}
+                          value={child._id}
+                          className="text-sm pr-6"
+                        >
+                          {child.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem
+                        key={parent._id}
+                        value={parent._id}
+                        className="text-sm"
+                      >
+                        {parent.name}
+                      </SelectItem>
+                    )}
+                  </SelectGroup>
                 ))
               )}
             </SelectContent>
@@ -155,14 +195,15 @@ export function BasicInfoStep({
             value={data.adType || "sale"}
             onValueChange={(val: any) => updateData({ adType: val })}
           >
-            <SelectTrigger className="h-11 rounded-xl bg-background border-border font-semibold text-xs sm:text-sm">
+            <SelectTrigger className="h-11 rounded-xl bg-background border-border text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="sale">ارائه / فروش</SelectItem>
-              <SelectItem value="rent">رهن و اجاره</SelectItem>
-              <SelectItem value="daily_rent">اجاره روزانه</SelectItem>
-              <SelectItem value="exchange">معاوضه</SelectItem>
+              {AD_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value} className="text-sm">
+                  {type.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -172,23 +213,21 @@ export function BasicInfoStep({
       <div className="space-y-1.5">
         <Label className="text-xs font-bold flex items-center gap-1.5">
           <Banknote className="w-3.5 h-3.5 text-muted-foreground" />
-          قیمت / حقوق (تومان) <span className="text-destructive">*</span>
+          قیمت (تومان) <span className="text-destructive">*</span>
         </Label>
         <div className="flex gap-2 sm:gap-3">
           <div className="relative flex-1">
             <Input
               type="number"
-              placeholder="مثال: ۱۲۵۰۰۰۰۰"
+              placeholder="مثال: 1250000000"
               value={data.price || ""}
               disabled={data.priceType === "negotiable"}
-              onChange={(e) =>
-                updateData({ price: parseInt(e.target.value) || 0 })
-              }
-              className="h-11 rounded-xl font-mono text-left pl-12"
+              onChange={(e) => updateData({ price: parseInt(e.target.value) || 0 })}
+              className="h-11 rounded-xl font-mono text-left pl-16"
               dir="ltr"
             />
             {data.priceType !== "negotiable" && (
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">
                 تومان
               </span>
             )}
@@ -197,27 +236,26 @@ export function BasicInfoStep({
           <Select
             value={data.priceType || "fixed"}
             onValueChange={(val: any) => {
-              if (val === "negotiable")
-                updateData({ priceType: val, price: 0 });
+              if (val === "negotiable") updateData({ priceType: val, price: 0 });
               else updateData({ priceType: val });
             }}
           >
-            <SelectTrigger className="w-[120px] sm:w-[140px] h-11 rounded-xl bg-background font-semibold text-xs">
+            <SelectTrigger className="w-[130px] h-11 rounded-xl bg-background text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="fixed">قیمت مقطوع</SelectItem>
               <SelectItem value="negotiable">توافقی</SelectItem>
+              <SelectItem value="per_meter">متری</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {data.price && data.price > 0 && data.priceType !== "negotiable" ? (
-          <p className="text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1 rounded-lg w-fit mt-1">
+        {data.price && data.price > 0 && data.priceType !== "negotiable" && (
+          <p className="text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1 rounded-lg w-fit">
             مبلغ: {formatPrice(data.price)} تومان
           </p>
-        ) : null}
-
+        )}
         {errors.price && data.priceType !== "negotiable" && (
           <p className="text-xs font-bold text-destructive flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
@@ -228,20 +266,17 @@ export function BasicInfoStep({
 
       {/* توضیحات */}
       <div className="space-y-1.5">
-        <Label
-          htmlFor="description"
-          className="text-xs font-bold flex items-center gap-1.5"
-        >
+        <Label htmlFor="description" className="text-xs font-bold flex items-center gap-1.5">
           <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-          توضیحات تکمیلی <span className="text-destructive">*</span>
+          توضیحات <span className="text-destructive">*</span>
         </Label>
         <Textarea
           id="description"
-          placeholder="شرح دقیق کالا، خدمات یا ویژگی‌ها..."
+          placeholder="شرح دقیق آگهی، ویژگی‌ها، شرایط فروش یا اجاره..."
           value={data.description || ""}
           onChange={(e) => updateData({ description: e.target.value })}
-          rows={4}
-          className="rounded-xl resize-none leading-relaxed text-xs sm:text-sm"
+          rows={5}
+          className="rounded-xl resize-none leading-relaxed text-sm"
         />
         <div className="flex justify-between items-center px-1">
           {errors.description && (
@@ -266,7 +301,7 @@ export function BasicInfoStep({
       <div className="flex justify-end pt-4 border-t border-border/40">
         <Button
           onClick={handleNext}
-          className="gap-2 rounded-xl h-10 px-6 text-xs font-bold bg-primary"
+          className="gap-2 rounded-xl h-10 px-6 text-sm font-bold bg-primary"
         >
           ادامه مراحل
           <ChevronLeft className="w-4 h-4" />

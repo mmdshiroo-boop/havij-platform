@@ -19,18 +19,51 @@ import { TrendingUp, ShieldAlert } from "lucide-react";
 
 export default function CookieCharts() {
   const [dailyData, setDailyData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cookieAuditService
       .getDailyStats(30)
-      .then(setDailyData)
-      .catch(console.error);
+      .then((data) => {
+        setDailyData(data || []);
+      })
+      .catch((err) => {
+        console.error("Error fetching daily stats:", err);
+        setDailyData([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <Card className="border-0 shadow-elevation rounded-2xl overflow-hidden">
+        <CardContent className="py-16">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (dailyData.length === 0) {
+    return (
+      <Card className="border-0 shadow-elevation rounded-2xl overflow-hidden">
+        <CardContent className="py-16 text-center">
+          <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
+            داده‌ای برای رسم نمودار ۳۰ روزه یافت نشد
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const chartData = dailyData.map((d) => ({
     date: toJalali(d._id),
-    logins: d.logins,
-    suspicious: d.suspicious,
+    logins: d.logins ?? 0,
+    suspicious: d.suspicious ?? 0,
   }));
 
   return (
@@ -82,13 +115,19 @@ export default function CookieCharts() {
               />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{
+                  fontSize: 10,
+                  fill: "hsl(var(--muted-foreground))",
+                }}
                 axisLine={{ stroke: "hsl(var(--border))" }}
                 tickLine={false}
                 interval={4}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{
+                  fontSize: 10,
+                  fill: "hsl(var(--muted-foreground))",
+                }}
                 axisLine={false}
                 tickLine={false}
               />

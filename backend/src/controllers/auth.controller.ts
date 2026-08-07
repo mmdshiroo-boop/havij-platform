@@ -504,9 +504,16 @@ export const loginWithPassword = async (req: Request, res: Response) => {
       sessionId,
       type: "login",
       ip: req.ip || req.socket.remoteAddress || "unknown",
-      userAgent: req.headers["user-agent"] || "",
-      cookieName: "access_token",
-      status: "success",
+     userAgent: req.headers["user-agent"] || "",
+  cookieName: "access_token",
+  status: "success",
+  navigation: {
+    currentPath: req.originalUrl,
+    referrer: req.headers["referer"] || "",
+  },
+  cookieData: {
+    name: "access_token",
+  },
     });
 
     await createAuditLog({

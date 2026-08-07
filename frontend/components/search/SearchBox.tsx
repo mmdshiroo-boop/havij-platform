@@ -1,6 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,10 +31,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 
-// ═══════════════════════════════════════════════════════════════
-// Types
-// ═══════════════════════════════════════════════════════════════
-
 interface SearchBoxProps {
   placeholder?: string;
   className?: string;
@@ -40,10 +42,6 @@ interface SearchBoxProps {
     adType?: string;
   }) => void;
 }
-
-// ═══════════════════════════════════════════════════════════════
-// Constants
-// ═══════════════════════════════════════════════════════════════
 
 const SMART_KEYWORDS = {
   propertyTypes: [
@@ -87,17 +85,13 @@ const getOrCreateGuestId = (): string => {
   return guestId;
 };
 
-// ═══════════════════════════════════════════════════════════════
-// SearchBoxInner — کامپوننت داخلی که useSearchParams دارد
-// ═══════════════════════════════════════════════════════════════
-
 function SearchBoxInner({
-  placeholder = "جستجو در آگهی‌ها (مثلا: اجاره ویلا)...",
+  placeholder = "جستجو در آگهی‌ها، املاک، خودرو و ...",
   className = "",
   onSearch,
 }: SearchBoxProps) {
   const router = useRouter();
-  const searchParams = useSearchParams(); // ✅ اینجا امن است چون در Suspense wrap شده
+  const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -111,16 +105,15 @@ function SearchBoxInner({
     _id: string;
     name: string;
   } | null>(null);
-  const [tempCity, setTempCity] = useState<string>("");
+  const [tempCity, setTempCity] = useState("");
 
   const [selectedProvinceName, setSelectedProvinceName] = useState("");
   const [selectedCityName, setSelectedCityName] = useState(
-    searchParams.get("city") || ""
+    searchParams.get("city") || "",
   );
 
   const [isDetecting, setIsDetecting] = useState(false);
 
-  // دریافت استان‌ها
   useEffect(() => {
     locationApi
       .getProvinces()
@@ -128,32 +121,34 @@ function SearchBoxInner({
       .catch((error) => console.error("خطا در دریافت استان‌ها:", error));
   }, []);
 
-  // دریافت شهرها
   useEffect(() => {
     if (!tempProvince?._id) {
       setCities([]);
       return;
     }
+
     locationApi
       .getCitiesByProvince(tempProvince._id)
       .then(setCities)
-      .catch((error) =>
-        console.error("خطا در دریافت شهرهای استان:", error)
-      );
+      .catch((error) => console.error("خطا در دریافت شهرها:", error));
   }, [tempProvince]);
 
-  // همگام‌سازی URL با State
   useEffect(() => {
-    const q = searchParams.get("q");
-    const city = searchParams.get("city");
-    const provinceParam = searchParams.get("province");
+    const q = searchParams.get("q") || "";
+    const city = searchParams.get("city") || "";
+    const provinceParam = searchParams.get("province") || "";
 
-    if (q) setQuery(q);
-    if (city) setSelectedCityName(city);
+    setQuery(q);
+    setSelectedCityName(city);
 
-    if (provinceParam && provinces.length > 0) {
+    if (!provinceParam) {
+      setSelectedProvinceName("");
+      return;
+    }
+
+    if (provinces.length > 0) {
       const foundProv = provinces.find(
-        (p) => p._id === provinceParam || p.name === provinceParam
+        (p) => p._id === provinceParam || p.name === provinceParam,
       );
 
       if (foundProv) {
@@ -165,13 +160,8 @@ function SearchBoxInner({
     }
   }, [searchParams, provinces]);
 
-  // اجرای جستجو
   const executeSearch = useCallback(
-    (
-      searchQ?: string,
-      searchCity?: string,
-      searchProvinceId?: string
-    ) => {
+    (searchQ?: string, searchCity?: string, searchProvinceId?: string) => {
       const params = new URLSearchParams();
       const finalQ = searchQ?.trim() || "";
 
@@ -182,6 +172,7 @@ function SearchBoxInner({
         SMART_KEYWORDS.propertyTypes.forEach((pt) => {
           if (finalQ.includes(pt.key)) smartPropertyType = pt.value;
         });
+
         SMART_KEYWORDS.adTypes.forEach((at) => {
           if (finalQ.includes(at.key)) smartAdType = at.value;
         });
@@ -191,11 +182,9 @@ function SearchBoxInner({
       if (searchCity) params.set("city", searchCity);
 
       const pId =
-        searchProvinceId !== undefined
-          ? searchProvinceId
-          : tempProvince?._id;
-      if (pId) params.set("province", pId);
+        searchProvinceId !== undefined ? searchProvinceId : tempProvince?._id;
 
+      if (pId) params.set("province", pId);
       if (smartPropertyType) params.set("propertyType", smartPropertyType);
       if (smartAdType) params.set("adType", smartAdType);
 
@@ -203,8 +192,8 @@ function SearchBoxInner({
 
       if (onSearch) {
         onSearch({
-          q: finalQ,
-          city: searchCity,
+          q: finalQ || undefined,
+          city: searchCity || undefined,
           province: pId || undefined,
           propertyType: smartPropertyType || undefined,
           adType: smartAdType || undefined,
@@ -213,15 +202,12 @@ function SearchBoxInner({
         router.push(`/search?${params.toString()}`, { scroll: false });
       }
     },
-    [onSearch, router, tempProvince?._id]
+    [onSearch, router, tempProvince?._id],
   );
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    executeSearch(
-      query.trim() || undefined,
-      selectedCityName || undefined
-    );
+    executeSearch(query.trim() || undefined, selectedCityName || undefined);
   };
 
   const handleProvinceSelect = (provId: string, provName: string) => {
@@ -234,7 +220,7 @@ function SearchBoxInner({
   const handleConfirmLocationWithValues = (
     provName: string,
     cityName: string,
-    provId?: string
+    provId?: string,
   ) => {
     setSelectedProvinceName(provName);
     setSelectedCityName(cityName);
@@ -247,21 +233,25 @@ function SearchBoxInner({
     handleConfirmLocationWithValues(
       tempProvince?.name || "",
       tempCity,
-      tempProvince?._id
+      tempProvince?._id,
     );
   };
 
-  const clearLocation = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClearAll = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    setQuery("");
     setTempProvince(null);
     setTempCity("");
     setSelectedProvinceName("");
     setSelectedCityName("");
+    setSearchLocationQuery("");
     setStep("province");
-    executeSearch(query.trim() || undefined, undefined, "");
+
+    executeSearch(undefined, undefined, "");
   };
 
-  // ذخیره موقعیت در بک‌اند
   const saveLocationToBackend = async (payload: {
     lat?: number;
     lng?: number;
@@ -270,9 +260,7 @@ function SearchBoxInner({
   }) => {
     try {
       const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("token")
-          : null;
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const guestId = getOrCreateGuestId();
       const API_BASE_URL =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
@@ -288,20 +276,31 @@ function SearchBoxInner({
             Authorization: token ? `Bearer ${token}` : "",
             "x-guest-id": guestId,
           },
-        }
+        },
       );
     } catch (err) {
       console.error("خطا در ثبت موقعیت مکانی:", err);
     }
   };
 
-  // تشخیص موقعیت مکانی
+  const handleFallbackIP = async (message: string) => {
+    try {
+      await saveLocationToBackend({});
+      toast.info(message);
+      setIsOpen(false);
+    } catch {
+      toast.error("خطا در ثبت موقعیت شبکه.");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
+
   const handleDetectLocation = () => {
     setIsDetecting(true);
 
     if (!navigator.geolocation) {
       handleFallbackIP(
-        "مرورگر شما از GPS پشتیبانی نمی‌کند. در حال دریافت بر اساس IP..."
+        "مرورگر شما از GPS پشتیبانی نمی‌کند. موقعیت بر اساس IP بررسی شد.",
       );
       return;
     }
@@ -309,6 +308,7 @@ function SearchBoxInner({
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+
         try {
           const response = await fetch(
             `https://api.neshan.org/v5/reverse?lat=${latitude}&lng=${longitude}`,
@@ -316,17 +316,17 @@ function SearchBoxInner({
               headers: {
                 "Api-Key": "service.f3da8afc6b384ab5bda01e3375e1f3f5",
               },
-            }
+            },
           );
+
           const data = await response.json();
-          const city =
-            data.city || data.municipality_zone || "نامشخص";
+          const city = data.city || data.municipality_zone || "نامشخص";
           const province = data.state || "نامشخص";
 
           const foundProvince = provinces.find(
-            (p) =>
-              p?.name?.includes(province) || province.includes(p?.name)
+            (p) => p?.name?.includes(province) || province.includes(p?.name),
           );
+
           const provinceId = foundProvince ? foundProvince._id : "";
 
           if (provinceId) {
@@ -342,11 +342,8 @@ function SearchBoxInner({
           setIsOpen(false);
 
           const finalCity = city !== "نامشخص" ? city : undefined;
-          executeSearch(
-            query.trim() || undefined,
-            finalCity,
-            provinceId
-          );
+
+          executeSearch(query.trim() || undefined, finalCity, provinceId);
 
           await saveLocationToBackend({
             lat: latitude,
@@ -356,7 +353,7 @@ function SearchBoxInner({
           });
 
           toast.success(
-            `موقعیت شما شناسایی شد: ${foundProvince?.name || province}، ${city}`
+            `موقعیت شما شناسایی شد: ${foundProvince?.name || province}، ${city}`,
           );
         } catch (error) {
           console.error("خطا در سرویس نشان:", error);
@@ -368,95 +365,116 @@ function SearchBoxInner({
       (error) => {
         let msg = "دریافت موقعیت بر اساس IP شبکه انجام شد.";
         if (error.code === error.PERMISSION_DENIED) {
-          msg =
-            "دسترسی GPS مسدود است. موقعیت بر اساس IP شبکه ثبت شد.";
+          msg = "دسترسی GPS مسدود است. موقعیت بر اساس IP شبکه ثبت شد.";
         }
         handleFallbackIP(msg);
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
 
-  const handleFallbackIP = async (message: string) => {
-    try {
-      await saveLocationToBackend({});
-      toast.info(message);
-      setIsOpen(false);
-    } catch {
-      toast.error("خطا در ثبت موقعیت شبکه.");
-    } finally {
-      setIsDetecting(false);
-    }
-  };
+  const filteredProvinces = useMemo(() => {
+    const safeSearch = searchLocationQuery.trim();
+    return provinces.filter((p) => p?.name?.includes(safeSearch));
+  }, [provinces, searchLocationQuery]);
 
-  // فیلتر
-  const safeSearch = searchLocationQuery.trim();
-  const filteredProvinces = provinces.filter((p) =>
-    p?.name?.includes(safeSearch)
+  const filteredCities = useMemo(() => {
+    const safeSearch = searchLocationQuery.trim();
+    return cities.filter((c) => c?.name?.includes(safeSearch));
+  }, [cities, searchLocationQuery]);
+
+  const hasActiveFilters = Boolean(
+    query.trim() || selectedProvinceName || selectedCityName,
   );
-  const filteredCities = cities.filter((c) =>
-    c?.name?.includes(safeSearch)
-  );
+
+  const locationLabel = selectedCityName
+    ? selectedProvinceName
+      ? `${selectedProvinceName}، ${selectedCityName}`
+      : selectedCityName
+    : selectedProvinceName || "همهٔ ایران";
 
   return (
-    <form
-      onSubmit={handleSearchSubmit}
-      className={`w-full ${className}`}
-      dir="rtl"
-    >
-      <div className="flex items-center bg-card text-card-foreground border border-border rounded-2xl px-3 md:px-4 shadow-xs transition-all duration-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 w-full h-12">
-        <div className="relative flex-1 h-full flex items-center gap-1 bg-transparent">
-          <button
-            type="submit"
-            className="p-2 text-muted-foreground hover:text-primary rounded-xl transition-colors shrink-0 bg-transparent cursor-pointer"
-          >
-            <Search className="h-5 w-5 transition-transform active:scale-95" />
-          </button>
+    <form onSubmit={handleSearchSubmit} className={cn("w-full", className)} dir="rtl">
+      <div
+        className={cn(
+          "group relative flex items-center gap-2 rounded-[22px] border bg-background/90 dark:bg-background/80 backdrop-blur-xl",
+          "border-orange-200/60 dark:border-orange-800/30",
+          "shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.22)]",
+          "h-12 md:h-14 px-2.5 md:px-3",
+          "transition-all duration-200",
+          "focus-within:border-orange-400/70 dark:focus-within:border-orange-500/40",
+          "focus-within:ring-4 focus-within:ring-orange-500/10",
+        )}
+      >
+        {/* دکمه جستجو */}
+        <button
+          type="submit"
+          className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all shrink-0"
+          aria-label="جستجو"
+        >
+          <Search className="h-5 w-5" />
+        </button>
 
+        {/* اینپوت */}
+        <div className="flex-1 min-w-0 h-full flex items-center">
           <Input
-            type="search"
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
             placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full h-full border-0 bg-transparent px-1 text-foreground text-[14px] font-bold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 shadow-none"
+            className={cn(
+              "w-full h-full border-0 bg-transparent px-0",
+              "text-[13px] md:text-[14px] font-bold text-foreground",
+              "placeholder:text-muted-foreground/60",
+              "focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none",
+            )}
           />
-
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="p-1.5 text-muted-foreground hover:text-foreground rounded-full ml-1 bg-transparent cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
         </div>
 
-        <div className="h-6 w-[1px] bg-border mx-1 md:mx-2 shrink-0" />
+        {/* جداکننده */}
+        <div className="h-6 md:h-7 w-px bg-border/70 shrink-0" />
 
+        {/* انتخاب مکان */}
         <Dialog
           open={isOpen}
           onOpenChange={(open) => {
             setIsOpen(open);
-            if (!open) setSearchLocationQuery("");
+            setSearchLocationQuery("");
+            if (open) {
+              setStep(tempProvince ? "city" : "province");
+            }
           }}
         >
           <DialogTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-1.5 h-9 bg-transparent hover:bg-muted/50 text-[13px] font-bold text-foreground rounded-xl px-2.5 md:px-3.5 transition-all shrink-0 max-w-[130px] sm:max-w-[180px] md:max-w-[240px] select-none cursor-pointer"
+              className={cn(
+                "flex items-center gap-2 rounded-xl transition-all shrink-0",
+                "h-9 md:h-10 px-3 md:px-4",
+                "max-w-[120px] sm:max-w-[170px] md:max-w-[230px]",
+                "bg-orange-50/80 dark:bg-orange-950/25",
+                "border border-orange-100 dark:border-orange-800/25",
+                "hover:bg-orange-100/80 dark:hover:bg-orange-900/30",
+              )}
             >
-              <MapPin className="w-4 h-4 text-muted-foreground/80 shrink-0" />
-              <span className="truncate text-ellipsis overflow-hidden whitespace-nowrap block">
-                {selectedCityName
-                  ? `${selectedProvinceName}، ${selectedCityName}`
-                  : selectedProvinceName || "همهٔ ایران"}
+              <MapPin className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
+              <span className="truncate text-[12px] md:text-[13px] font-extrabold text-foreground/85">
+                {locationLabel}
               </span>
+              <ChevronLeft
+                className={cn(
+                  "w-4 h-4 shrink-0 text-orange-400 dark:text-orange-500 transition-transform duration-200",
+                  isOpen ? "-rotate-90" : "rotate-90",
+                )}
+              />
             </button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-[480px] w-[95%] rounded-2xl p-0 overflow-hidden border border-border bg-popover shadow-2xl animate-in zoom-in-95 duration-150">
-            <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between gap-2 space-y-0">
+          <DialogContent className="max-w-[520px] w-[95vw] rounded-3xl p-0 overflow-hidden border border-orange-200/40 dark:border-orange-800/30 bg-background/95 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.16)]">
+            <DialogHeader className="p-5 border-b border-border/60 flex flex-row items-center justify-between gap-2 space-y-0">
               <div className="flex items-center gap-2">
                 {step === "city" && (
                   <button
@@ -465,96 +483,88 @@ function SearchBoxInner({
                       setStep("province");
                       setSearchLocationQuery("");
                     }}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-colors cursor-pointer"
+                    className="p-2 rounded-xl text-muted-foreground hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 )}
-                <DialogTitle className="text-base font-black text-popover-foreground">
+                <DialogTitle className="text-base md:text-lg font-black text-foreground">
                   {step === "province"
                     ? "انتخاب استان"
-                    : `انتخاب شهر (${tempProvince?.name})`}
+                    : `انتخاب شهر ${tempProvince?.name ? `(${tempProvince.name})` : ""}`}
                 </DialogTitle>
               </div>
             </DialogHeader>
 
             {/* تشخیص موقعیت */}
-            <div className="p-4 pb-2 bg-muted/20 border-b border-border/40">
+            <div className="p-4 border-b border-border/50 bg-muted/20">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleDetectLocation}
                 disabled={isDetecting}
-                className="w-full justify-center gap-2 rounded-xl h-11 text-xs font-bold border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-all cursor-pointer"
+                className="w-full h-11 rounded-2xl border-dashed border-orange-300 dark:border-orange-700/50 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 font-extrabold text-xs gap-2"
               >
                 {isDetecting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    در حال بازیابی موقعیت فعلی شما...
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    در حال بازیابی موقعیت شما...
                   </>
                 ) : (
                   <>
-                    <MapPin className="h-4 w-4 text-primary fill-primary/10" />
-                    شناسایی هوشمند شهر من (مکان‌یاب)
+                    <MapPin className="w-4 h-4" />
+                    شناسایی هوشمند شهر من
                   </>
                 )}
               </Button>
             </div>
 
             {/* جستجوی مکان */}
-            <div className="p-4 bg-muted/30 border-b border-border/60">
-              <div className="relative flex items-center bg-card border border-border rounded-xl px-3 h-11 w-full focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-2" />
+            <div className="p-4 border-b border-border/50 bg-muted/10">
+              <div className="relative flex items-center h-11 rounded-2xl border border-orange-200/50 dark:border-orange-800/30 bg-background px-3 focus-within:border-orange-400/60 focus-within:ring-2 focus-within:ring-orange-500/10 transition-all">
+                <Search className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0 ml-2" />
                 <input
                   type="text"
-                  placeholder={
-                    step === "province"
-                      ? "جستجوی استان..."
-                      : "جستجوی شهر..."
-                  }
                   value={searchLocationQuery}
-                  onChange={(e) =>
-                    setSearchLocationQuery(e.target.value)
-                  }
-                  className="w-full px-2 py-1 bg-transparent text-foreground placeholder:text-muted-foreground/60 outline-none text-sm font-medium"
+                  onChange={(e) => setSearchLocationQuery(e.target.value)}
+                  placeholder={step === "province" ? "جستجوی استان..." : "جستجوی شهر..."}
+                  className="w-full bg-transparent outline-none text-sm font-medium placeholder:text-muted-foreground/60"
                 />
                 {searchLocationQuery && (
-                  <X
-                    className="w-4 h-4 text-muted-foreground cursor-pointer hover:text-popover-foreground"
+                  <button
+                    type="button"
                     onClick={() => setSearchLocationQuery("")}
-                  />
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* لیست استان‌ها / شهرها */}
-            <div className="max-h-[280px] overflow-y-auto p-3 pl-1.5 space-y-0.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary/60">
+            {/* لیست */}
+            <div className="max-h-[300px] overflow-y-auto p-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-orange-400/60">
               {step === "province" && (
                 <>
                   <button
-                    key="all-iran"
                     type="button"
                     onClick={() => {
                       setTempProvince(null);
                       setTempCity("");
                       handleConfirmLocationWithValues("", "", "");
                     }}
-                    className="flex items-center justify-between w-full px-4 py-3.5 text-sm font-bold rounded-xl text-primary bg-primary/10 text-right hover:bg-primary/15 transition-all cursor-pointer"
+                    className="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl text-sm font-extrabold bg-orange-50 dark:bg-orange-950/25 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all"
                   >
                     <span>همهٔ ایران</span>
-                    <ChevronLeft className="w-4 h-4 text-primary" />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-
-                  <div className="h-[1px] bg-border/60 my-1.5" />
 
                   {filteredProvinces.map((prov) => (
                     <button
                       key={prov._id}
                       type="button"
-                      onClick={() =>
-                        handleProvinceSelect(prov._id, prov.name)
-                      }
-                      className="flex items-center justify-between w-full px-4 py-3.5 text-sm font-bold rounded-xl text-popover-foreground text-right hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handleProvinceSelect(prov._id, prov.name)}
+                      className="flex items-center justify-between w-full px-4 py-3.5 rounded-2xl text-sm font-bold text-right text-foreground hover:bg-muted/50 transition-all"
                     >
                       <span>{prov.name}</span>
                       <ChevronLeft className="w-4 h-4 text-muted-foreground/60" />
@@ -572,23 +582,19 @@ function SearchBoxInner({
                       handleConfirmLocationWithValues(
                         tempProvince?.name || "",
                         "",
-                        tempProvince?._id
+                        tempProvince?._id,
                       );
                     }}
                     className={cn(
-                      "flex items-center justify-between w-full px-4 py-3.5 text-sm font-bold rounded-xl text-right transition-all cursor-pointer",
+                      "flex items-center justify-between w-full px-4 py-3.5 rounded-2xl text-sm font-bold text-right transition-all",
                       tempCity === ""
-                        ? "text-primary bg-primary/10"
-                        : "text-popover-foreground hover:bg-muted/50"
+                        ? "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/25"
+                        : "text-foreground hover:bg-muted/50",
                     )}
                   >
                     <span>همه شهرهای {tempProvince?.name}</span>
-                    {tempCity === "" && (
-                      <Check className="w-4 h-4 text-primary" />
-                    )}
+                    {tempCity === "" && <Check className="w-4 h-4" />}
                   </button>
-
-                  <div className="h-[1px] bg-border/60 my-1.5" />
 
                   {filteredCities.map((city) => (
                     <button
@@ -599,41 +605,40 @@ function SearchBoxInner({
                         handleConfirmLocationWithValues(
                           tempProvince?.name || "",
                           city.name,
-                          tempProvince?._id
+                          tempProvince?._id,
                         );
                       }}
                       className={cn(
-                        "flex items-center justify-between w-full px-4 py-3.5 text-sm font-bold rounded-xl text-right transition-all cursor-pointer",
+                        "flex items-center justify-between w-full px-4 py-3.5 rounded-2xl text-sm font-bold text-right transition-all",
                         tempCity === city.name
-                          ? "text-primary bg-primary/10"
-                          : "text-popover-foreground hover:bg-muted/50"
+                          ? "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/25"
+                          : "text-foreground hover:bg-muted/50",
                       )}
                     >
                       <span>{city.name}</span>
-                      {tempCity === city.name && (
-                        <Check className="w-4 h-4 text-primary" />
-                      )}
+                      {tempCity === city.name && <Check className="w-4 h-4" />}
                     </button>
                   ))}
                 </>
               )}
             </div>
 
-            {/* دکمه‌های تایید */}
-            <div className="p-4 bg-muted/40 border-t border-border flex items-center justify-end gap-3">
+            {/* فوتر */}
+            <div className="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                className="rounded-xl px-5 font-bold border-border text-muted-foreground hover:bg-muted h-11 text-xs cursor-pointer"
+                className="h-11 rounded-2xl px-5 text-xs font-extrabold"
               >
                 انصراف
               </Button>
+
               <Button
                 type="button"
                 onClick={handleConfirmLocation}
                 disabled={step === "province" && !tempProvince}
-                className="rounded-xl px-6 font-bold bg-primary hover:bg-primary/95 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground h-11 text-xs transition-all shadow-md shadow-primary/10 cursor-pointer"
+                className="h-11 rounded-2xl px-6 text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
               >
                 تایید مکان
               </Button>
@@ -641,24 +646,21 @@ function SearchBoxInner({
           </DialogContent>
         </Dialog>
 
-        {(selectedProvinceName || selectedCityName) && (
+        {/* دکمه پاک‌سازی واحد */}
+        {hasActiveFilters && (
           <button
             type="button"
-            onClick={clearLocation}
-            className="w-5 h-5 rounded-lg bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all flex items-center justify-center mr-1 shrink-0 active:scale-90 cursor-pointer"
+            onClick={handleClearAll}
+            className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all shrink-0"
+            aria-label="پاک کردن جستجو و فیلترها"
           >
-            <X className="w-3 h-3" />
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
     </form>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════
-// SearchBox — کامپوننت بیرونی با Suspense
-// ✅ این همیشه export می‌شود و داخلش Suspense دارد
-// ═══════════════════════════════════════════════════════════════
 
 export function SearchBox({
   placeholder,
@@ -668,13 +670,12 @@ export function SearchBox({
   return (
     <Suspense
       fallback={
-        // Skeleton ساده هنگام بارگذاری
-        <div className={`w-full ${className}`}>
-          <div className="flex items-center bg-card border border-border rounded-2xl px-3 md:px-4 h-12 gap-3 animate-pulse">
-            <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
-            <div className="flex-1 h-4 bg-muted rounded-lg" />
-            <div className="w-[1px] h-6 bg-border" />
-            <div className="w-24 h-4 bg-muted rounded-lg shrink-0" />
+        <div className={cn("w-full", className)}>
+          <div className="flex items-center gap-2 h-12 md:h-14 rounded-[22px] border border-orange-200/40 dark:border-orange-800/20 bg-background/80 px-3 animate-pulse">
+            <div className="w-9 h-9 rounded-xl bg-muted shrink-0" />
+            <div className="flex-1 h-4 rounded-lg bg-muted" />
+            <div className="w-px h-6 bg-border" />
+            <div className="w-24 md:w-32 h-9 rounded-xl bg-muted shrink-0" />
           </div>
         </div>
       }

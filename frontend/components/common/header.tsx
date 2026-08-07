@@ -424,19 +424,13 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
           className="relative h-9 w-9 rounded-full hover:bg-muted/60 transition-all duration-300"
         >
           <Avatar className="h-9 w-9 ring-2 ring-transparent hover:ring-primary/40 transition-all duration-300">
-            <AvatarImage
-              key={avatarKey}
-              src={avatarSrc}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-muted text-foreground font-black text-sm">
-              <img
-                src="/images/user.webp"
-                alt="avatar"
-                className="w-full h-full object-cover rounded-full"
-              />
-            </AvatarFallback>
-          </Avatar>
+  <AvatarImage
+    key={avatarKey}
+    src={avatarSrc || "/images/user.webp"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-muted text-foreground font-black text-sm" />
+</Avatar>
         </Button>
       </DropdownMenuTrigger>
 
@@ -446,20 +440,14 @@ export function UserMenu({ onLogout, customMenuItems }: UserMenuProps) {
         sideOffset={10}
       >
         <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/20 backdrop-blur-sm mb-2">
-          <Avatar className="w-14 h-14 ring-2 ring-primary/20 shadow-lg rounded-full shrink-0">
-            <AvatarImage
-              key={avatarKey}
-              src={avatarSrc}
-              className="object-cover"
-            />
-            <AvatarFallback>
-              <img
-                src="/images/user.webp"
-                alt="avatar"
-                className="w-full h-full object-cover rounded-full"
-              />
-            </AvatarFallback>
-          </Avatar>
+        <Avatar className="w-14 h-14 ring-2 ring-primary/20 shadow-lg rounded-full shrink-0">
+  <AvatarImage
+    key={avatarKey}
+    src={avatarSrc || "/images/user.webp"}
+    className="object-cover"
+  />
+  <AvatarFallback />
+</Avatar>
 
           <div className="flex-1 min-w-0 text-right">
             <p className="font-black text-[13px] text-foreground tracking-tight truncate">
@@ -592,20 +580,20 @@ function MainNavMenu() {
       >
         {user ? (
           <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl mb-3">
-            <Avatar className="w-10 h-10 ring-2 ring-primary/20 rounded-full">
-              <AvatarImage
-                src={
-                  user.avatar
-                    ? user.avatar.startsWith("http")
-                      ? user.avatar
-                      : `${API_BASE.replace("/api", "")}${user.avatar}`
-                    : "/images/user.webp"
-                }
-              />
-              <AvatarFallback>
-                <img src="/images/user.webp" className="w-full h-full object-cover rounded-full" />
-              </AvatarFallback>
-            </Avatar>
+            <Avatar className="w-10 h-10 ring-2 ring-primary/30 rounded-full">
+  <AvatarImage
+    src={
+      user.avatar
+        ? user.avatar.startsWith("http")
+          ? user.avatar
+          : `${API_BASE.replace("/api", "")}${user.avatar}`
+        : "/images/user.webp"
+    }
+    alt={user.firstName}
+    className="object-cover"
+  />
+  <AvatarFallback />
+</Avatar>
             <div className="text-right text-sm font-bold truncate">
               {user.firstName} {user.lastName}
               <p className="text-xs text-muted-foreground font-mono">{user.phone}</p>
@@ -785,20 +773,20 @@ export function MainLinksSheet() {
             {/* پروفایل */}
             {user ? (
               <div className="flex items-center gap-3 p-4 bg-muted/30 border-b border-border">
-                <Avatar className="w-10 h-10 ring-2 ring-primary/30 rounded-full">
-                  <AvatarImage
-                    src={
-                      user.avatar
-                        ? user.avatar.startsWith("http")
-                          ? user.avatar
-                          : `${API_BASE.replace("/api", "")}${user.avatar}`
-                        : "/images/user.webp"
-                    }
-                  />
-                  <AvatarFallback>
-                    <img src="/images/user.webp" className="w-full h-full object-cover rounded-full" />
-                  </AvatarFallback>
-                </Avatar>
+              <Avatar className="w-10 h-10 ring-2 ring-primary/30 rounded-full">
+  <AvatarImage
+    src={
+      user.avatar
+        ? user.avatar.startsWith("http")
+          ? user.avatar
+          : `${API_BASE.replace("/api", "")}${user.avatar}`
+        : "/images/user.webp"
+    }
+    alt={user.firstName}
+    className="object-cover"
+  />
+  <AvatarFallback />
+</Avatar>
                 <div className="text-right">
                   <p className="text-sm font-bold truncate">
                     {user.firstName} {user.lastName}
@@ -892,7 +880,7 @@ export function MainLinksSheet() {
   );
 }
 
-// ═══════════════ هدر اصلی (با فاصله‌گذاری بهینه) ═══════════════
+// ═══════════════ هدر اصلی — ریسپانسیو سه‌لایه ═══════════════
 export function Header() {
   const router = useRouter();
   const { user } = useAuth();
@@ -904,66 +892,174 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const Logo = ({ small = false }: { small?: boolean }) => (
-    <Link href="/" className="flex items-center shrink-0" dir="rtl">
-      <img
-        src="/log.png"
-        alt="لوگو"
-        className={`object-contain ${small ? "w-[60px]" : "w-[150px]"} h-20`}
-      />
-    </Link>
-  );
-
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-300 border-b bg-card/90 backdrop-blur-md flex items-center",
+        "sticky top-0 z-50 w-full transition-all duration-300 border-b bg-card/90 backdrop-blur-md",
         isScrolled
           ? "h-16 bg-background/95 backdrop-blur-md shadow-sm border-border/60"
-          : "h-20 bg-background/80 backdrop-blur-sm border-border/40",
+          : "h-20 md:h-[72px] bg-background/80 backdrop-blur-sm border-border/40"
       )}
       dir="rtl"
     >
-      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 flex items-center justify-between gap-4 md:gap-8">
-        {/* ═══════════ دسکتاپ (چیدمان بهبودیافته) ═══════════ */}
+      <div className="w-full max-w-[1400px] mx-auto h-full px-4 md:px-6 lg:px-8 flex items-center">
+
+        {/* ═══════════════════════════════════════
+            دسکتاپ (lg و بالاتر — ≥1024px)
+           ═══════════════════════════════════════ */}
         <div className="hidden lg:flex items-center justify-between w-full gap-8">
-          <Logo />
+          {/* لوگو */}
+          <Link href="/" className="flex items-center shrink-0">
+            <img
+              src="/log.png"
+              alt="هویج"
+              className="h-14 w-auto object-contain"
+            />
+          </Link>
+
+          {/* سرچ‌باکس */}
           <div className="flex-1 max-w-xl mx-auto w-full">
             <Suspense fallback={null}>
               <SearchBox className="w-full" />
             </Suspense>
           </div>
+
+          {/* اکشن‌ها */}
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/chat")}>
-              <MessageCircle className="h-[18px] w-[18px]" /> پیام‌ها
+            <Button
+              variant="ghost"
+              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground/80 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
+              onClick={() => router.push("/chat")}
+            >
+              <MessageCircle className="h-[18px] w-[18px] text-orange-500 dark:text-orange-400" />
+              پیام‌ها
             </Button>
-            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push(`/panel/${user?.role || "user"}/bookmarks`)}>
-              <Bookmark className="h-[18px] w-[18px]" /> ذخیره‌شده‌ها
+
+            <Button
+              variant="ghost"
+              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground/80 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
+              onClick={() =>
+                router.push(`/panel/${user?.role || "user"}/bookmarks`)
+              }
+            >
+              <Bookmark className="h-[18px] w-[18px] text-orange-500 dark:text-orange-400" />
+              ذخیره‌شده‌ها
             </Button>
-            <Button variant="ghost" className="rounded-xl h-9 px-3 gap-2 text-xs font-bold" onClick={() => router.push("/pricing")}>
-              <Gem className="h-[17px] w-[17px]" /> اشتراک VIP
+
+            <Button
+              variant="ghost"
+              className="rounded-xl h-9 px-3 gap-2 text-xs font-bold text-foreground/80 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
+              onClick={() => router.push("/pricing")}
+            >
+              <Gem className="h-[17px] w-[17px] text-orange-500 dark:text-orange-400" />
+              اشتراک VIP
             </Button>
+
             <ThemeToggle />
             <NotificationBell />
-            <Button className="gap-2 rounded-xl h-9 px-4 text-xs font-bold bg-gradient-to-r from-primary to-primary/90 text-white" onClick={() => router.push(user ? "/create-ad" : "/auth")}>
-              <PlusCircle className="h-4 w-4" /> ثبت آگهی
+
+            <Button
+              className="gap-2 rounded-xl h-9 px-4 text-xs font-bold bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-500 text-white shadow-md shadow-orange-500/15 hover:shadow-orange-500/25 transition-all"
+              onClick={() => router.push(user ? "/create-ad" : "/auth")}
+            >
+              <PlusCircle className="h-4 w-4" />
+              ثبت آگهی
             </Button>
+
             <UserMenu />
           </div>
         </div>
 
-        {/* ═══════════ موبایل/تبلت (منوی شیشه‌ای جدید) ═══════════ */}
-        <div className="flex lg:hidden items-center justify-between w-full gap-3">
-          <div className="flex items-center gap-2">
+        {/* ═══════════════════════════════════════
+            تبلت (md تا lg — ≥768px و <1024px)
+           ═══════════════════════════════════════ */}
+        <div className="hidden md:flex lg:hidden items-center w-full gap-4">
+          {/* ردیف بالا — لوگو + سرچ + اکشن‌ها */}
+          <div className="flex items-center w-full gap-4">
+            {/* منوی همبرگری */}
             <MainLinksSheet />
-            <Logo small />
+
+            {/* لوگو — بزرگ‌تر از موبایل */}
+            <Link href="/" className="flex items-center shrink-0">
+              <img
+                src="/log.png"
+                alt="هویج"
+                className="h-12 w-auto object-contain"
+              />
+            </Link>
+
+            {/* سرچ‌باکس — بزرگ‌تر و وسط */}
+            <div className="flex-1 max-w-md mx-auto">
+              <Suspense fallback={null}>
+                <SearchBox className="w-full" />
+              </Suspense>
+            </div>
+
+            {/* اکشن‌های تبلت */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* دکمه چت — فقط آیکون در تبلت */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
+                onClick={() => router.push("/chat")}
+              >
+                <MessageCircle className="h-[18px] w-[18px] text-orange-500 dark:text-orange-400" />
+              </Button>
+
+              {/* دکمه ذخیره‌شده‌ها */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-all"
+                onClick={() =>
+                  router.push(`/panel/${user?.role || "user"}/bookmarks`)
+                }
+              >
+                <Bookmark className="h-[18px] w-[18px] text-orange-500 dark:text-orange-400" />
+              </Button>
+
+              {/* ثبت آگهی — دکمه کوچک‌تر */}
+              <Button
+                className="gap-1.5 rounded-xl h-9 px-3 text-xs font-bold bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-500 text-white shadow-md shadow-orange-500/15 hover:shadow-orange-500/25 transition-all"
+                onClick={() => router.push(user ? "/create-ad" : "/auth")}
+              >
+                <PlusCircle className="h-4 w-4" />
+                ثبت آگهی
+              </Button>
+
+              <NotificationBell />
+              <ThemeToggle />
+              <UserMenu />
+            </div>
           </div>
-          <div className="flex-1 max-w-xs mx-1">
+        </div>
+
+        {/* ═══════════════════════════════════════
+            موبایل (<768px)
+           ═══════════════════════════════════════ */}
+        <div className="flex md:hidden items-center justify-between w-full gap-2">
+          {/* سمت راست — منو + لوگو */}
+          <div className="flex items-center gap-1.5">
+            <MainLinksSheet />
+            <Link href="/" className="flex items-center shrink-0">
+              <img
+                src="/log.png"
+                alt="هویج"
+                className="h-9 w-auto object-contain"
+              />
+            </Link>
+          </div>
+
+          {/* وسط — سرچ‌باکس */}
+          <div className="flex-1 mx-1.5">
             <Suspense fallback={null}>
               <SearchBox className="w-full" />
             </Suspense>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+
+          {/* سمت چپ — اکشن‌ها */}
+          <div className="flex items-center gap-1 shrink-0">
             <NotificationBell />
             <ThemeToggle />
             <UserMenu />

@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/getImageUrl";
 
 // تابع کمکی استخراج مطمئن ID کاربر
 const getUserId = (user: any): string => {
@@ -270,9 +271,7 @@ export default function ChatMonitorPage() {
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* کارت‌های آماری - کاملاً یک‌دست با شمارنده واقعی */}
-      {/* ========================================================= */}
+      {/* کارت‌های آماری */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {statCardsData.map((card, idx) => (
           <motion.div
@@ -368,10 +367,16 @@ export default function ChatMonitorPage() {
                             key={p._id || idx}
                             className="w-8 h-8 border-2 border-background"
                           >
-                            <AvatarImage src={p.avatar} />
-                            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                              {p.firstName?.[0] || "U"}
-                            </AvatarFallback>
+                            <AvatarImage
+                              src={
+                                p.avatar
+                                  ? getImageUrl(p.avatar)
+                                  : "/images/user.webp"
+                              }
+                              alt={p.firstName || "کاربر"}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-muted text-muted-foreground text-xs" />
                           </Avatar>
                         ))}
                       </div>
@@ -420,9 +425,7 @@ export default function ChatMonitorPage() {
         </Table>
       </div>
 
-      {/* ========================================================= */}
       {/* مودال چت */}
-      {/* ========================================================= */}
       <Dialog open={!!selectedConv} onOpenChange={() => setSelectedConv(null)}>
         <DialogContent
           showCloseButton={false}
@@ -438,16 +441,28 @@ export default function ChatMonitorPage() {
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-3 space-x-reverse">
                   <Avatar className="w-10 h-10 border-2 border-card shadow-sm z-10">
-                    <AvatarImage src={p1?.avatar} />
-                    <AvatarFallback className="bg-muted text-foreground font-bold text-sm">
-                      {p1?.firstName?.[0] || "1"}
-                    </AvatarFallback>
+                    <AvatarImage
+                      src={
+                        p1?.avatar
+                          ? getImageUrl(p1.avatar)
+                          : "/images/user.webp"
+                      }
+                      alt={p1?.firstName}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-muted text-foreground font-bold text-sm" />
                   </Avatar>
                   <Avatar className="w-10 h-10 border-2 border-card shadow-sm">
-                    <AvatarImage src={p2?.avatar} />
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm">
-                      {p2?.firstName?.[0] || "2"}
-                    </AvatarFallback>
+                    <AvatarImage
+                      src={
+                        p2?.avatar
+                          ? getImageUrl(p2.avatar)
+                          : "/images/user.webp"
+                      }
+                      alt={p2?.firstName}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm" />
                   </Avatar>
                 </div>
 
@@ -572,20 +587,22 @@ export default function ChatMonitorPage() {
                           {/* آواتار */}
                           {!isAdmin && (
                             <Avatar className="w-7 h-7 shrink-0 mb-1">
-                              <AvatarImage src={senderObj?.avatar} />
+                              <AvatarImage
+                                src={
+                                  senderObj?.avatar
+                                    ? getImageUrl(senderObj.avatar)
+                                    : "/images/user.webp"
+                                }
+                                alt={senderObj?.firstName || "کاربر"}
+                                className="object-cover"
+                              />
                               <AvatarFallback
                                 className={
                                   isP1
                                     ? "bg-muted text-muted-foreground text-xs"
                                     : "bg-primary text-primary-foreground text-xs"
                                 }
-                              >
-                                {senderObj?.firstName?.[0] ||
-                                  (isP1
-                                    ? p1?.firstName?.[0]
-                                    : p2?.firstName?.[0]) ||
-                                  "U"}
-                              </AvatarFallback>
+                              />
                             </Avatar>
                           )}
 

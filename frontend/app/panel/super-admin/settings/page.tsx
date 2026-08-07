@@ -130,7 +130,7 @@ function SettingsCard({
   children,
   className,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>; // ★ اصلاح‌شده
   title: string;
   description: string;
   children: React.ReactNode;
@@ -167,7 +167,7 @@ function SwitchRow({
 }: {
   label: string;
   description: string;
-  icon?: React.ElementType;
+  icon?: React.ComponentType<{ className?: string }>; // ★ اصلاح‌شده
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
   danger?: boolean;

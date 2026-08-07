@@ -101,14 +101,14 @@ export function ChatList({
               )}
             >
               <div className="relative">
-                <Avatar className="h-12 w-12 shrink-0 border border-border/50 shadow-sm">
-                  <AvatarImage
-                    src={getImageUrl(otherUser?.avatar)} // ✅ helper مرکزی
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {getInitials(otherUser)}
-                  </AvatarFallback>
-                </Avatar>
+               <Avatar className="h-12 w-12 shrink-0 border border-border/50 shadow-sm">
+  <AvatarImage
+    src={getImageUrl(otherUser?.avatar) || "/images/user.webp"}
+    alt={otherUser?.firstName || "کاربر"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-primary/10 text-primary font-bold" />
+</Avatar>
               </div>
 
               <div className="flex-1 min-w-0 flex flex-col justify-center">

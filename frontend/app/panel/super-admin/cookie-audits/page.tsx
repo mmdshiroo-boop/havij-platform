@@ -91,7 +91,7 @@ export default function CookieAuditsPage() {
         />
       )}
 
-      مودال جزئیات کاربر
+      {/* مودال جزئیات کاربر */}
       {selectedUserId && (
         <UserDetailModal
           userId={selectedUserId}

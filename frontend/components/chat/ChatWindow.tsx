@@ -346,19 +346,18 @@ export function ChatWindow({
           onClick={() => setShowProfileModal(true)}
           className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity text-right"
         >
-          <Avatar className="h-9 w-9 md:h-10 md:w-10 ring-2 ring-primary/10 shadow-sm">
-            {otherParticipant?.avatar ? (
-              <AvatarImage
-                src={getImageUrl(otherParticipant.avatar)} // ✅
-                alt="پروفایل مخاطب"
-              />
-            ) : (
-              <AvatarImage src="/images/user.webp" alt="پیش‌فرض" />
-            )}
-            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs md:text-sm">
-              {otherParticipant?.firstName?.[0] || "?"}
-            </AvatarFallback>
-          </Avatar>
+       <Avatar className="h-9 w-9 md:h-10 md:w-10 ring-2 ring-primary/10 shadow-sm">
+  <AvatarImage
+    src={
+      otherParticipant?.avatar
+        ? getImageUrl(otherParticipant.avatar)
+        : "/images/user.webp"
+    }
+    alt={otherParticipant?.firstName || "مخاطب"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs md:text-sm" />
+</Avatar>
           <div className="min-w-0">
             <p className="font-extrabold text-xs md:text-sm truncate text-foreground">
               {otherParticipant
@@ -539,13 +538,14 @@ export function ChatWindow({
                           );
                         }}
                       >
-                        <Avatar className="h-7 w-7 shrink-0 mb-0.5 border border-border/40 shadow-sm">
-                          <AvatarImage src={avatarSrc} />
-                          <AvatarFallback className="text-[9px] bg-card font-bold">
-                            ?
-                          </AvatarFallback>
-                        </Avatar>
-
+                       <Avatar className="h-7 w-7 shrink-0 mb-0.5 border border-border/40 shadow-sm">
+  <AvatarImage
+    src={avatarSrc}
+    alt={msg.sender?.firstName || "کاربر"}
+    className="object-cover"
+  />
+  <AvatarFallback className="text-[9px] bg-card font-bold" />
+</Avatar>
                         <div className="flex flex-col">
                           <div
                             className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl shadow-sm flex flex-col ${isMine ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border/40 rounded-bl-sm text-foreground"}`}
@@ -737,16 +737,18 @@ export function ChatWindow({
             پروفایل کاربر
           </DialogTitle>
           <div className="flex flex-col items-center space-y-4 pt-3">
-            <Avatar className="h-20 w-20 md:h-24 md:w-24 ring-4 ring-primary/10 shadow-lg">
-              {otherParticipant?.avatar ? (
-                <AvatarImage src={getImageUrl(otherParticipant.avatar)} /> // ✅
-              ) : (
-                <AvatarImage src="/images/user.webp" />
-              )}
-              <AvatarFallback className="text-2xl md:text-3xl bg-primary/10 text-primary font-black">
-                {otherParticipant?.firstName?.[0] || "?"}
-              </AvatarFallback>
-            </Avatar>
+         <Avatar className="h-14 w-14 md:h-16 md:w-16 ring-2 ring-primary/10 shadow-lg">
+  <AvatarImage
+    src={
+      otherParticipant?.avatar
+        ? getImageUrl(otherParticipant.avatar)
+        : "/images/user.webp"
+    }
+    alt={otherParticipant?.firstName || "مخاطب"}
+    className="object-cover"
+  />
+  <AvatarFallback className="text-2xl md:text-3xl bg-primary/10 text-primary font-black" />
+</Avatar>
             <div className="text-center space-y-1">
               <h3 className="font-extrabold text-base md:text-xl">
                 {otherParticipant?.firstName} {otherParticipant?.lastName}

@@ -144,7 +144,6 @@ export default function LocationMapPage() {
       const rawUserId = data.userId;
       const userIdStr = typeof rawUserId === "object" ? rawUserId?._id : rawUserId;
 
-      /* ★ IP را از همه جای ممکن استخراج کن */
       const ipValue = data.ip || data.ipAddress || data.userIp || data.clientIp || "";
 
       setLocations((prev) => {
@@ -226,7 +225,6 @@ export default function LocationMapPage() {
       if (roleFilter !== "all") (params as any).role = roleFilter;
 
       const response = await locationApi.getUsersLocations(params);
-      /* ★ مطمئن می‌شیم IP در هر آیتم موجود است */
       const rawData = response?.data || [];
       const processedData = rawData.map((item: any) => ({
         ...item,
@@ -502,9 +500,10 @@ export default function LocationMapPage() {
                     const fullName = u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || "کاربر ناشناس" : "کاربر ناشناس";
                     const isOnline = item.isOnline ?? false;
                     const role = u?.role || "guest";
-                    const avatarSrc = u?.avatar ? getImageUrl(u.avatar) : undefined;
+                    const avatarSrc = u?.avatar
+                      ? getImageUrl(u.avatar)
+                      : "/images/user.webp";
 
-                    /* ★ استخراج IP */
                     const ip = extractIp(item);
 
                     let borderColor = isOnline ? "#10B981" : "#94A3B8";
@@ -526,11 +525,11 @@ export default function LocationMapPage() {
                             : "bg-background border-border/40 hover:border-primary/20 hover:bg-muted/20",
                         )}
                       >
-                        {/* آواتار */}
+                        {/* ★ آواتار اصلاح‌شده (بدون children در AvatarFallback) */}
                         <div className="relative shrink-0">
                           <Avatar className="w-10 h-10 border-2 shadow-sm" style={{ borderColor }}>
                             <AvatarImage
-                              src={avatarSrc || "/images/user.webp"}
+                              src={avatarSrc}
                               alt={fullName}
                               className="object-cover"
                             />
@@ -548,22 +547,16 @@ export default function LocationMapPage() {
                             <span className="font-bold text-xs text-foreground truncate max-w-[90px]">{fullName}</span>
                             <RoleBadge role={role} />
                           </div>
-
-                          {/* شماره تلفن */}
                           <p className="text-[11px] text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
                             <Phone className="w-2.5 h-2.5 shrink-0" />
                             {u?.phone || "بدون شماره"}
                           </p>
-
-                          {/* ─── IP ─── */}
                           <p className="text-[10px] font-mono mt-0.5 flex items-center gap-1">
                             <Wifi className="w-2.5 h-2.5 text-orange-500 shrink-0" />
                             <span className={ip ? "text-orange-600 dark:text-orange-400 font-bold" : "text-muted-foreground/50 italic"}>
                               {ip || "IP ثبت نشده"}
                             </span>
                           </p>
-
-                          {/* موقعیت */}
                           {item.city && (
                             <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                               <MapPin className="w-2.5 h-2.5 shrink-0" />
@@ -573,8 +566,6 @@ export default function LocationMapPage() {
                             </p>
                           )}
                         </div>
-
-                        {/* info */}
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleSelectUser(item, true); }}
@@ -625,8 +616,6 @@ export default function LocationMapPage() {
               markersRef={markersRef}
               onToggleFullscreen={() => setIsMapFullscreen(true)}
             />
-
-            {/* راهنمای رنگ */}
             <div className="absolute bottom-5 right-4 z-[500] bg-background/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-border text-xs flex flex-wrap items-center gap-2.5">
               {[
                 { color: "bg-emerald-500", label: "آنلاین" },
@@ -641,8 +630,6 @@ export default function LocationMapPage() {
                 </div>
               ))}
             </div>
-
-            {/* شمارنده آنلاین */}
             <div className="absolute top-4 right-4 z-[500] bg-background/90 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg border border-border text-xs flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
               <span className="font-bold">{localStats.online.toLocaleString("fa-IR")} آنلاین</span>
@@ -677,7 +664,7 @@ export default function LocationMapPage() {
         </DialogContent>
       </Dialog>
 
-      {/* مودال جزئیات */}
+      {/* ★ مودال جزئیات اصلاح‌شده (بدون children در AvatarFallback) */}
       <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-md rounded-2xl p-6 z-[9999]" dir="rtl">
           <DialogHeader>
@@ -690,12 +677,12 @@ export default function LocationMapPage() {
           {selectedUser && (() => {
             const u = selectedUser.userId as any;
             const fullName = u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : "کاربر ناشناس";
-            const avatarSrc = u?.avatar ? getImageUrl(u.avatar) : undefined;
+            const avatarSrc = u?.avatar
+              ? getImageUrl(u.avatar)
+              : "/images/user.webp";
             const isOnline = selectedUser.isOnline ?? false;
             const role = u?.role || "guest";
             const roleCfg = ROLE_CONFIG[role] || ROLE_CONFIG.guest;
-
-            /* ★ استخراج IP در مودال */
             const ip = extractIp(selectedUser);
 
             return (
@@ -703,7 +690,7 @@ export default function LocationMapPage() {
                 <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-border/50">
                   <Avatar className="w-14 h-14 border-2 border-primary/20 shadow-md">
                     <AvatarImage
-                      src={avatarSrc || "/images/user.webp"}
+                      src={avatarSrc}
                       alt={fullName}
                       className="object-cover"
                     />

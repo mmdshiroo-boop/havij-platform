@@ -466,3 +466,49 @@
     print-color-adjust: exact !important;
   }
 }
+
+
+
+/* ═══ Swiper Pagination — هویج ═══ */
+.havij-bullet {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: hsl(var(--muted-foreground) / 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.havij-bullet:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+  transform: scale(1.2);
+}
+
+.havij-bullet-active {
+  background: #f97316 !important;
+  width: 24px !important;
+  border-radius: 9999px !important;
+}
+
+/* Dark mode */
+.dark .havij-bullet {
+  background: hsl(var(--muted-foreground) / 0.15);
+}
+
+.dark .havij-bullet:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+.dark .havij-bullet-active {
+  background: #fb923c !important;
+}
+
+/* حذف اسکرول‌بار افقی */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

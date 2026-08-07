@@ -48,24 +48,24 @@ export const updateMyLocation = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?._id;
     if (!userId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "کاربر احراز هویت نشده است" });
+      return res.status(401).json({ success: false, message: "کاربر احراز هویت نشده است" });
     }
 
     let { lat, lng, accuracy, province, city, district } = req.body;
 
-    // ۱. اگر کاربر لوکیشن GPS را بلاک کرده باشد (lat و lng ارسال نشده باشند)
-    if (lat === undefined || lng === undefined || lat === null || lng === null) {
-      const ip = req.ip || req.socket.remoteAddress || "";
-      const cleanIp = ip.includes(":") ? ip.split(":").pop() : ip;
+    // ✅ استخراج IP واقعی کاربر (از هدر x-forwarded-for که Vercel/Railway ارسال می‌کنند)
+    const rawIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      "";
+    const cleanIp = rawIp.includes(":") ? rawIp.split(":").pop() || "" : rawIp;
 
+    if (lat === undefined || lng === undefined || lat === null || lng === null) {
       try {
-        // استخراج موقعیت هوشمند بر اساس IP
         const geoRes = await axios.get(
           `http://ip-api.com/json/${cleanIp}?fields=status,lat,lon,regionName,city,district`
         );
-        
         if (geoRes.data && geoRes.data.status === "success") {
           lat = geoRes.data.lat;
           lng = geoRes.data.lon;
@@ -78,13 +78,11 @@ export const updateMyLocation = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // ۲. اگر هنوز مختصات خالی بود، مختصات پیش‌فرض اهواز قرار می‌گیرد
     if (lat === undefined || lng === undefined) {
-      lat = 31.3183; // عرض جغرافیایی اهواز
-      lng = 48.6706; // طول جغرافیایی اهواز
+      lat = 31.3183;
+      lng = 48.6706;
     }
 
-    // ۳. تکمیل نام استان، شهر و محله در صورت نیاز
     let finalProvince = province;
     let finalCity = city;
     let finalDistrict = district;
@@ -96,21 +94,18 @@ export const updateMyLocation = async (req: AuthRequest, res: Response) => {
       if (!finalDistrict) finalDistrict = geoInfo.district || "مرکز";
     }
 
-    // ۴. ذخیره در دیتابیس UserLocation جهت استفاده نقشه ادمین
     const updatedLocation = await UserLocation.findOneAndUpdate(
       { userId },
       {
         userId,
-        location: {
-          type: "Point",
-          coordinates: [Number(lng), Number(lat)], // GEOJSON format [lng, lat]
-        },
+        location: { type: "Point", coordinates: [Number(lng), Number(lat)] },
         city: finalCity,
         province: finalProvince,
         district: finalDistrict,
         accuracy: accuracy || 0,
         isOnline: true,
         lastSeenAt: new Date(),
+        ip: cleanIp,   // ← حالا همیشه مقدار دارد
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -122,9 +117,7 @@ export const updateMyLocation = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("❌ Error in updateMyLocation:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "خطا در ثبت موقعیت مکانی" });
+    return res.status(500).json({ success: false, message: "خطا در ثبت موقعیت مکانی" });
   }
 };
 
@@ -326,7 +319,7 @@ export const getUsersLocations = async (req: AuthRequest, res: Response) => {
       ];
     }
 
-    const rawLocations = await UserLocation.find(queryFilter)
+   const rawLocations = await UserLocation.find(queryFilter)
       .populate({
         path: "userId",
         select: "firstName lastName phone role avatar isActive isBanned email",
@@ -338,39 +331,30 @@ export const getUsersLocations = async (req: AuthRequest, res: Response) => {
       const coords = loc.location?.coordinates || [0, 0];
       const lng = coords[0] || 0;
       const lat = coords[1] || 0;
-      const userObj =
-        typeof loc.userId === "object" && loc.userId !== null ? loc.userId : {};
-
+      const userObj = typeof loc.userId === "object" && loc.userId !== null ? loc.userId : {};
       return {
         _id: loc._id,
         userId: userObj,
         location: { type: "Point", coordinates: [lng, lat] },
-        lat,
-        lng,
+        lat, lng,
         city: loc.city || "نامشخص",
         province: loc.province || "نامشخص",
         district: loc.district || "نامشخص",
         accuracy: loc.accuracy || 0,
         isOnline: Boolean(loc.isOnline),
         lastSeenAt: loc.lastSeenAt || loc.updatedAt || new Date(),
+        ip: loc.ip || "",   // ← این خط را نگه دارید
       };
     });
 
     return res.status(200).json({
       success: true,
       data: formattedLocations,
-      pagination: {
-        page: 1,
-        limit: formattedLocations.length,
-        total: formattedLocations.length,
-        pages: 1,
-      },
+      pagination: { page: 1, limit: formattedLocations.length, total: formattedLocations.length, pages: 1 },
     });
   } catch (error) {
     console.error("❌ Error in getUsersLocations:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "خطا در دریافت لیست" });
+    return res.status(500).json({ success: false, message: "خطا در دریافت لیست موقعیت‌ها" });
   }
 };
 

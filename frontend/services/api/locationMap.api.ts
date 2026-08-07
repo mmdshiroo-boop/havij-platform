@@ -56,6 +56,7 @@ export interface UserLocation {
   isOnline: boolean;
   createdAt: string;
   updatedAt: string;
+   ip?: string;
 }
 
 export interface LocationStats {

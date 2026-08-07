@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Avatar as AvatarPrimitive } from "radix-ui";
-
 import { cn } from "@/lib/utils";
 
 function Avatar({
@@ -43,21 +42,35 @@ function AvatarImage({
 
 function AvatarFallback({
   className,
+  // ★ children رو حذف کردیم — فقط تصویر پیش‌فرض
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+}: Omit<React.ComponentProps<typeof AvatarPrimitive.Fallback>, "children">) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex size-full items-center justify-center rounded-full bg-muted overflow-hidden",
         className,
       )}
       {...props}
-    />
+    >
+      {/* ★ فقط یک تصویر پیش‌فرض — بدون children */}
+      <img
+        src="/images/user.webp"
+        alt=""
+        className="w-full h-full object-cover rounded-full"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
+      />
+    </AvatarPrimitive.Fallback>
   );
 }
 
-function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
+function AvatarBadge({
+  className,
+  ...props
+}: React.ComponentProps<"span">) {
   return (
     <span
       data-slot="avatar-badge"
@@ -73,7 +86,10 @@ function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
-function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
+function AvatarGroup({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="avatar-group"

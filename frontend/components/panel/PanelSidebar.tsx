@@ -1,13 +1,12 @@
-// components/layout/PanelSidebar.tsx
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
-  Heart,
+  Bookmark,
   User,
   Home,
   Crown,
@@ -32,33 +31,32 @@ import {
   Ticket,
   Flag,
   Database,
-  History,
   Webhook,
-  Bookmark,
-  Activity,
-  ScrollText,
-  Globe,
-  CreditCard,
   SlidersHorizontal,
+  CreditCard,
+  Globe,
   MessageCircle,
-  Cookie,
-  ShieldAlert,
-  MapPin,
-  Download,
   ShieldCheck,
+  ScrollText,
+  Cookie,
+  Download,
   Search,
-  HomeIcon, // 🆕 برای ذخیره‌شده‌ها
+  ShieldAlert,
+  Activity,
+  HomeIcon,
+  LucideFileText,
+  MapPin,
+  ChevronLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/app/context/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getImageUrl } from "@/lib/getImageUrl";
+import { toast } from "sonner";
 
 // ─── منوی کاربر عادی (USER) ───
 export const userMenu = [
@@ -402,15 +400,13 @@ export const superAdminMenu = [
   },
 ];
 
-
+// ─── کامپوننت اصلی سایدبار (توسعه‌یافته) ───
 export function PanelSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser, logout } = useAuth(); // ✅ استفاده از logout از context
   const [menuItems, setMenuItems] = useState(userMenu);
   const [userRole, setUserRole] = useState<string>("user");
-  const [avatarKey, setAvatarKey] = useState(Date.now());
-
   const { unreadCount } = useNotifications();
 
   useEffect(() => {
@@ -418,49 +414,35 @@ export function PanelSidebar() {
     const role = authUser.role || "user";
     setUserRole(role);
     switch (role) {
-      case "vip":
-        setMenuItems(vipMenu);
-        break;
-      case "agent":
-        setMenuItems(agentMenu);
-        break;
-      case "developer":
-        setMenuItems(developerMenu);
-        break;
-      case "expert":
-        setMenuItems(expertMenu);
-        break;
-      case "admin":
-        setMenuItems(adminMenu);
-        break;
-      case "super_admin":
-        setMenuItems(superAdminMenu);
-        break;
-      default:
-        setMenuItems(userMenu);
+      case "vip": setMenuItems(vipMenu); break;
+      case "agent": setMenuItems(agentMenu); break;
+      case "developer": setMenuItems(developerMenu); break;
+      case "expert": setMenuItems(expertMenu); break;
+      case "admin": setMenuItems(adminMenu); break;
+      case "super_admin": setMenuItems(superAdminMenu); break;
+      default: setMenuItems(userMenu);
     }
   }, [authUser]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/");
-  };
-
-  const getAvatarUrl = () => {
-    if (!authUser?.avatar) return "";
-    if (authUser.avatar.startsWith("http")) return authUser.avatar;
-    return `${API_BASE.replace("/api", "")}${authUser.avatar}`;
+  // خروج امن با پاک‌سازی کامل نشست
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("با موفقیت خارج شدید");
+      router.push("/");
+    } catch (error) {
+      toast.error("خطا در خروج از حساب");
+    }
   };
 
   const getInitials = () => {
     if (authUser?.firstName && authUser?.lastName)
       return `${authUser.firstName[0]}${authUser.lastName[0]}`;
     if (authUser?.firstName) return authUser.firstName[0];
-    return authUser?.phone?.slice(-2) || "V";
+    return authUser?.phone?.slice(-2) || "U";
   };
 
-  const getRoleStyles = (role?: string) => {
+  const getRoleVisuals = (role?: string) => {
     switch (role) {
       case "vip":
         return {
@@ -485,7 +467,7 @@ export function PanelSidebar() {
         };
       case "expert":
         return {
-          label: "کارشناس سیستم",
+          label: "کارشناس رسمی",
           bg: "from-emerald-500/20 to-teal-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
           ring: "ring-emerald-500/30",
           icon: <Shield className="w-3.5 h-3.5" />,
@@ -514,7 +496,8 @@ export function PanelSidebar() {
     }
   };
 
-  const roleConfig = getRoleStyles(userRole);
+  const visuals = getRoleVisuals(userRole);
+
   const mainNavigation = menuItems.filter(
     (item) => !item.href.includes("profile") && !item.href.includes("settings"),
   );
@@ -522,31 +505,34 @@ export function PanelSidebar() {
     (item) => item.href.includes("profile") || item.href.includes("settings"),
   );
 
+  // منبع تصویر آواتار (بدون avatarPreview)
+  const avatarSrc = authUser?.avatar ? getImageUrl(authUser.avatar) : "/images/user.webp";
+
   return (
     <nav
-      className="p-4 h-full flex flex-col justify-between bg-background/40 backdrop-blur-xl select-none"
+      className="flex flex-col h-full bg-background/80 backdrop-blur-xl border-l border-border/40 overflow-y-auto"
       dir="rtl"
     >
-      <div className="space-y-6">
+      <div className="flex-1 flex flex-col p-4 space-y-6">
+        {/* کارت هویت کاربر (شیشه‌ای بهبودیافته) */}
         <div
           className={cn(
-            "relative overflow-hidden p-4 rounded-2xl border bg-gradient-to-br transition-all duration-300 shadow-xs",
-            roleConfig.bg,
+            "relative overflow-hidden p-4 rounded-2xl border bg-gradient-to-br backdrop-blur-sm transition-all duration-300 shadow-sm",
+            visuals.bg,
           )}
         >
-          {userRole === "vip" && (
-            <div className="absolute left-[-10px] top-[-10px] opacity-10 rotate-12">
-              <Sparkles className="w-20 h-20 text-amber-500" />
-            </div>
-          )}
+          <div className="absolute left-[-10px] top-[-10px] opacity-10 rotate-12 text-7xl">
+            {visuals.icon}
+          </div>
           <div className="flex items-center gap-3 relative z-10">
+            {/* ★ آواتار اصلاح‌شده ★ */}
             <Avatar className="h-11 w-11 ring-2 ring-primary/20 rounded-full">
-              {authUser?.avatar ? (
-                <AvatarImage key={avatarKey} src={getAvatarUrl()} />
-              ) : null}
-              <AvatarFallback className="bg-primary/10 text-primary font-black text-sm">
-                {getInitials()}
-              </AvatarFallback>
+              <AvatarImage
+                src={avatarSrc}
+                alt={authUser?.firstName || "کاربر"}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-primary/10 text-primary font-black text-sm" />
             </Avatar>
             <div className="flex-1 min-w-0 text-right space-y-0.5">
               <p className="font-black text-sm text-foreground tracking-tight truncate">
@@ -554,31 +540,29 @@ export function PanelSidebar() {
                   ? `${authUser.firstName} ${authUser.lastName || ""}`
                   : "کاربر سیستم"}
               </p>
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/60 backdrop-blur-xs text-[10px] font-bold tracking-wide">
-                {roleConfig.icon}
-                <span>{roleConfig.label}</span>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/60 backdrop-blur-xs text-[10px] font-bold">
+                {visuals.icon}
+                <span>{visuals.label}</span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* منوی اصلی */}
         <div className="space-y-1">
-          <p className="text-[10px] font-bold text-muted-foreground/70 pr-2 mb-2 tracking-wider">
-            منو دسترسی اصلی
+          <p className="text-[11px] font-bold text-muted-foreground/70 pr-2 mb-2 tracking-wider uppercase">
+            منو اصلی
           </p>
           {mainNavigation.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block relative group"
-              >
+              <Link key={item.href} href={item.href} className="block relative group">
                 <motion.div
                   whileHover={{ x: -3 }}
+                  whileTap={{ scale: 0.98 }}
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   className={cn(
-                    "flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all duration-200 relative",
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 relative",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/10 font-black"
                       : "hover:bg-muted/70 text-muted-foreground hover:text-foreground",
@@ -587,26 +571,20 @@ export function PanelSidebar() {
                   <item.icon
                     className={cn(
                       "w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110",
-                      isActive
-                        ? "text-primary-foreground"
-                        : "text-muted-foreground/80 group-hover:text-primary",
+                      isActive ? "text-primary-foreground" : "text-muted-foreground/80 group-hover:text-primary",
                     )}
                   />
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
                   {item.href.includes("notifications") && unreadCount > 0 && (
-                    <Badge className="mr-auto bg-destructive text-destructive-foreground h-5 min-w-[20px] flex items-center justify-center rounded-full text-[10px]">
+                    <Badge className="mr-auto bg-destructive text-destructive-foreground h-5 min-w-[20px] flex items-center justify-center rounded-full text-[10px] font-bold">
                       {unreadCount}
                     </Badge>
                   )}
                   {isActive && (
                     <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute right-0 top-3 bottom-3 w-1 bg-primary-foreground rounded-l-md"
-                      transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 30,
-                      }}
+                      layoutId="sidebarActiveMain"
+                      className="absolute right-0 top-2 bottom-2 w-1 bg-primary-foreground rounded-l-md"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
                 </motion.div>
@@ -615,24 +593,22 @@ export function PanelSidebar() {
           })}
         </div>
 
+        {/* تنظیمات و حساب */}
         {accountNavigation.length > 0 && (
           <div className="space-y-1 pt-2">
-            <p className="text-[10px] font-bold text-muted-foreground/70 pr-2 mb-2 tracking-wider">
-              تنظیمات و حساب
+            <p className="text-[11px] font-bold text-muted-foreground/70 pr-2 mb-2 tracking-wider uppercase">
+              حساب کاربری
             </p>
             {accountNavigation.map((item) => {
               const isActive = pathname === item.href;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block relative group"
-                >
+                <Link key={item.href} href={item.href} className="block relative group">
                   <motion.div
                     whileHover={{ x: -3 }}
+                    whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className={cn(
-                      "flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all duration-200 relative",
+                      "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 relative",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-md shadow-primary/10 font-black"
                         : "hover:bg-muted/70 text-muted-foreground hover:text-foreground",
@@ -641,26 +617,15 @@ export function PanelSidebar() {
                     <item.icon
                       className={cn(
                         "w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110",
-                        isActive
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground/80 group-hover:text-primary",
+                        isActive ? "text-primary-foreground" : "text-muted-foreground/80 group-hover:text-primary",
                       )}
                     />
-                    <span>{item.label}</span>
-                    {item.href.includes("notifications") && unreadCount > 0 && (
-                      <Badge className="mr-auto bg-destructive text-destructive-foreground h-5 min-w-[20px] flex items-center justify-center rounded-full text-[10px]">
-                        {unreadCount}
-                      </Badge>
-                    )}
+                    <span className="truncate">{item.label}</span>
                     {isActive && (
                       <motion.div
-                        layoutId="activeIndicator"
-                        className="absolute right-0 top-3 bottom-3 w-1 bg-primary-foreground rounded-l-md"
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 30,
-                        }}
+                        layoutId="sidebarActiveAccount"
+                        className="absolute right-0 top-2 bottom-2 w-1 bg-primary-foreground rounded-l-md"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       />
                     )}
                   </motion.div>
@@ -671,20 +636,23 @@ export function PanelSidebar() {
         )}
       </div>
 
-      <div className="space-y-1.5 pt-4 border-t border-border/60">
-        <Link href="/" className="block group">
-          <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200">
-            <Home className="w-4 h-4 flex-shrink-0 text-muted-foreground/70 group-hover:text-foreground transition-colors" />
-            <span>بازگشت به صفحه اصلی</span>
-          </div>
+      {/* بخش پایین: لینک بازگشت و خروج */}
+      <div className="p-4 border-t border-border/40 space-y-1.5 bg-background/40 backdrop-blur-sm">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+        >
+          <Home className="w-4 h-4 flex-shrink-0" />
+          <span>بازگشت به سایت</span>
         </Link>
+
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-destructive hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
           onClick={handleLogout}
         >
           <LogOut className="w-4 h-4 flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
-          <span>خروج از حساب کاربری</span>
+          <span>خروج از حساب</span>
         </Button>
       </div>
     </nav>

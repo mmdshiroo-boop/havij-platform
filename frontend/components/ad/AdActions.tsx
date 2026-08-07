@@ -114,15 +114,13 @@ export function AdActions({
       >
         {/* پروفایل فروشنده */}
         <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12 border-2 border-primary/20 rounded-full">
-            <AvatarImage
-              src={sellerAvatar ? getAvatarUrl() : "/images/user.webp"}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-primary/10 text-primary font-black text-sm rounded-full">
-              {sellerName.substring(0, 2)}
-            </AvatarFallback>
-          </Avatar>
+        <Avatar className="w-12 h-12 border-2 border-primary/20 rounded-full">
+  <AvatarImage
+    src={sellerAvatar ? getAvatarUrl() : "/images/user.webp"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-primary/10 text-primary font-black text-sm rounded-full" />
+</Avatar>
           <div className="space-y-0.5 flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <h3 className="font-black text-sm md:text-base text-card-foreground truncate">

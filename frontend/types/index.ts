@@ -114,6 +114,7 @@ export interface CreateAdData {
   longitude?: number;
   amenities?: Amenities;
   additionalProperties?: AdditionalProperty[];
+    province?: string;     
 }
 
 export interface Ticket {
@@ -267,20 +268,35 @@ export interface CookieAudit {
   device?: string;
 }
 
-export interface CookieAuditLog extends CookieAudit {
-  expiresAt?: string;   // ✅ اضافه شد (انقضای کلی نشست/کوکی)
+// types/index.ts (بخشی از کد)
+export interface CookieAuditLog {
+  _id: string;
+  type: string;
+  status: string;
+  userId?: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    role?: string;
+    avatar?: string;                 
+  } | null;
+  ip?: string;
+  userAgent?: string;
+  device?: string;
+  sessionId?: string;
+  tokenId?: string;
+  cookieData?: any;                 
+  cookieName?: string;
   navigation?: {
     currentPath?: string;
-    referrer?: string;
   };
-  cookieData?: {
-    name?: string;
-    domain?: string;
-    value?: string;
-    expires?: string;   // این مربوط به انقضای خود کوکی است
-  };
+  location?: string | { city?: string; country?: string };
+  metadata?: Record<string, any>;
+  expiresAt?: string;
+  createdAt: string;
 }
-
 export interface CookieAuditStats {
   totalLogins: number;
   suspiciousLast24h: number;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Fingerprint, Radio, Globe } from "lucide-react";
+import { Fingerprint } from "lucide-react";
 
 const CookieAuditStatsCard = dynamic(
   () => import("@/components/cookie-ui/CookieAuditStats"),
@@ -22,14 +22,14 @@ const CookieAuditDetailModal = dynamic(
   () => import("@/components/cookie-ui/CookieAuditDetailModal"),
   { ssr: false },
 );
-
-// const CookieAuditGraphPanel = dynamic(
-//   () => import("@/components/cookie-ui/AdminGraphPanel"),
-//   { ssr: false },
-// );
+const UserDetailModal = dynamic(
+  () => import("@/components/cookie-ui/UserDetailModal"),
+  { ssr: false },
+);
 
 export default function CookieAuditsPage() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   return (
     <div className="space-y-6 p-4 md:p-6" dir="rtl">
@@ -70,21 +70,32 @@ export default function CookieAuditsPage() {
       >
         <CookieAuditStatsCard />
       </Suspense>
+
       <Suspense fallback={<Skeleton className="h-96 rounded-2xl" />}>
-        <CookieAuditTable onViewDetail={(log: any) => setSelectedLog(log)} />
+        <CookieAuditTable
+          onViewDetail={(log: any) => setSelectedLog(log)}
+          onViewUser={(userId: string) => setSelectedUserId(userId)}
+        />
       </Suspense>
+
       <Suspense fallback={<Skeleton className="h-[420px] rounded-2xl" />}>
         <CookieCharts />
       </Suspense>
-      <Suspense fallback={<Skeleton className="h-[420px] rounded-2xl" />}>
-        {/* <CookieAuditGraphPanel /> */}
-      </Suspense>
+
       {/* مودال جزئیات رویداد */}
       {selectedLog && (
         <CookieAuditDetailModal
           log={selectedLog}
           open={!!selectedLog}
           onClose={() => setSelectedLog(null)}
+        />
+      )}
+
+      مودال جزئیات کاربر
+      {selectedUserId && (
+        <UserDetailModal
+          userId={selectedUserId}
+          onClose={() => setSelectedUserId(null)}
         />
       )}
     </div>

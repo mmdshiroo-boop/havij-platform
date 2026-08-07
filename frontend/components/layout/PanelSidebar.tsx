@@ -525,12 +525,14 @@ export function PanelSidebar() {
             {visuals.icon}
           </div>
           <div className="flex items-center gap-3 relative z-10">
-            <Avatar className={cn("h-12 w-12 ring-2 rounded-full", visuals.ring)}>
-              <AvatarImage src={avatarSrc} className="object-cover" />
-              <AvatarFallback className="bg-background/80 text-foreground font-black text-sm">
-                {getInitials()}
-              </AvatarFallback>
-            </Avatar>
+         <Avatar className="h-11 w-11 ring-2 ring-primary/20 rounded-full">
+  <AvatarImage
+    src={avatarSrc}
+    alt={authUser?.firstName || "کاربر"}
+    className="object-cover"
+  />
+  <AvatarFallback className="bg-primary/10 text-primary font-black text-sm" />
+</Avatar>
             <div className="flex-1 min-w-0 text-right space-y-0.5">
               <p className="font-black text-sm text-foreground tracking-tight truncate">
                 {authUser?.firstName

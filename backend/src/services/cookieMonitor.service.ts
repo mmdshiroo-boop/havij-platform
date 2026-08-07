@@ -10,6 +10,16 @@ interface CookieEventParams {
   cookieName: string;
   status?: ICookieAudit["status"];
   reason?: string;
+  navigation?: {
+     currentPath?: string;
+     referrer?: string;
+   };
+    cookieData?: {
+    name?: string;
+    domain?: string;
+    value?: string;
+    expires?: string;
+  };
 }
 
 export class CookieMonitorService {
@@ -23,7 +33,7 @@ export class CookieMonitorService {
   }
 
   // بعد از create:
-  static async logEvent(params: CookieEventParams): Promise<void> {
+ static async logEvent(params: CookieEventParams): Promise<void> {
     try {
       const fingerprint = this.generateFingerprint(params.ip, params.userAgent);
       const newLog = await CookieAudit.create({
@@ -36,9 +46,10 @@ export class CookieMonitorService {
         cookieName: params.cookieName,
         status: params.status || "success",
         metadata: params.reason ? { reason: params.reason } : undefined,
+        navigation: params.navigation,        // ✅ اضافه شد
+        cookieData: params.cookieData,        // ✅ اضافه شد
       });
 
-      // 📡 ارسال real-time به سوپر ادمین‌ها
       try {
         const { getIO } = require("../socket");
         const io = getIO();
@@ -68,15 +79,22 @@ export class CookieMonitorService {
     }).sort({ createdAt: -1 });
 
     if (lastEvent && lastEvent.fingerprint !== currentFingerprint) {
-      await this.logEvent({
-        sessionId,
-        type: "suspicious",
-        ip,
-        userAgent,
-        cookieName: "session",
-        status: "failed",
-        reason: "Fingerprint mismatch: possible session hijacking",
-      });
+    await this.logEvent({
+  sessionId,
+  type: "suspicious",
+  ip,
+  userAgent,
+  cookieName: "session",
+  status: "failed",
+  reason: "Fingerprint mismatch: possible session hijacking",
+  navigation: {
+    currentPath: "",   // می‌توانید undefined بفرستید
+    referrer: "",
+  },
+  cookieData: {
+    name: "session",
+  },
+});
       return true;
     }
     return false;

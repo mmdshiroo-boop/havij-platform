@@ -104,28 +104,29 @@ export const getUsersLocations = async (req: AuthRequest, res: Response) => {
       .sort({ lastSeenAt: -1 })
       .lean();
 
-    const formattedLocations = rawLocations.map((loc: any) => {
-      const coords = loc.location?.coordinates || [0, 0];
-      const lng = coords[0] || 0;
-      const lat = coords[1] || 0;
-      const userObj =
-        typeof loc.userId === "object" && loc.userId !== null ? loc.userId : {};
+    // بخش ساخت formattedLocations (حدود خط ۱۳۰-۱۶۰)
+const formattedLocations = rawLocations.map((loc: any) => {
+  const coords = loc.location?.coordinates || [0, 0];
+  const lng = coords[0] || 0;
+  const lat = coords[1] || 0;
+  const userObj =
+    typeof loc.userId === "object" && loc.userId !== null ? loc.userId : {};
 
-      return {
-        _id: loc._id,
-        userId: userObj,
-        location: { type: "Point", coordinates: [lng, lat] },
-        lat,
-        lng,
-        city: loc.city || "نامشخص",
-        province: loc.province || "نامشخص",
-        district: loc.district || "نامشخص",
-        accuracy: loc.accuracy || 0,
-        isOnline: Boolean(loc.isOnline),
-        lastSeenAt: loc.lastSeenAt || loc.updatedAt || new Date(),
-      };
-    });
-
+  return {
+    _id: loc._id,
+    userId: userObj,
+    location: { type: "Point", coordinates: [lng, lat] },
+    lat,
+    lng,
+    city: loc.city || "نامشخص",
+    province: loc.province || "نامشخص",
+    district: loc.district || "نامشخص",
+    accuracy: loc.accuracy || 0,
+    isOnline: Boolean(loc.isOnline),
+    lastSeenAt: loc.lastSeenAt || loc.updatedAt || new Date(),
+    ip: loc.ip || "",            // ← اضافه شد
+  };
+});
     return res.status(200).json({
       success: true,
       data: formattedLocations,

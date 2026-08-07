@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -432,90 +432,90 @@ export default function AgentAgentsPage() {
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ y: -4 }}
               >
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
-                  <div className={`h-1.5 ${getStatusColor(agent.status)}`} />
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-14 w-14 ring-2 ring-primary/20">
-                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-lg font-bold">
-                            {getInitials(agent.firstName, agent.lastName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="font-bold text-lg">
-                            {agent.firstName} {agent.lastName}
-                          </h3>
-                          <Badge
-                            className={`mt-1 ${
-                              agent.status === "active"
-                                ? "bg-emerald-500"
-                                : "bg-slate-500"
-                            }`}
-                          >
-                            {agent.status === "active" ? "فعال" : "غیرفعال"}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(agent)}
-                          className="h-8 w-8 rounded-lg hover:bg-primary/10"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleStatus(agent)}
-                          className="h-8 w-8 rounded-lg hover:bg-primary/10"
-                        >
-                          {agent.status === "active" ? (
-                            <UserX className="w-4 h-4" />
-                          ) : (
-                            <UserCheck className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteId(agent._id)}
-                          className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+               <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+  <div className={`h-1.5 ${getStatusColor(agent.status)}`} />
+  <CardContent className="p-5">
+    <div className="flex items-start justify-between mb-4">
+      <div className="flex items-center gap-3">
+        {/* ★ اصلاح‌شده: AvatarImage + AvatarFallback بدون children */}
+        <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+          <AvatarImage src="/images/user.webp" alt="agent" className="object-cover" />
+          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-lg font-bold" />
+        </Avatar>
+        <div>
+          <h3 className="font-bold text-lg">
+            {agent.firstName} {agent.lastName}
+          </h3>
+          <Badge
+            className={`mt-1 ${
+              agent.status === "active"
+                ? "bg-emerald-500"
+                : "bg-slate-500"
+            }`}
+          >
+            {agent.status === "active" ? "فعال" : "غیرفعال"}
+          </Badge>
+        </div>
+      </div>
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleEdit(agent)}
+          className="h-8 w-8 rounded-lg hover:bg-primary/10"
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => handleToggleStatus(agent)}
+          className="h-8 w-8 rounded-lg hover:bg-primary/10"
+        >
+          {agent.status === "active" ? (
+            <UserX className="w-4 h-4" />
+          ) : (
+            <UserCheck className="w-4 h-4" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDeleteId(agent._id)}
+          className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
 
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>{agent.phone}</span>
-                      </div>
-                      {agent.email && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="w-3.5 h-3.5" />
-                          <span className="truncate">{agent.email}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 className="w-3.5 h-3.5" />
-                        <span>{agent.propertiesCount} ملک ثبت شده</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>
-                          عضویت:{" "}
-                          {new Date(agent.createdAt).toLocaleDateString(
-                            "fa-IR",
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+    <div className="space-y-2 pt-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Phone className="w-3.5 h-3.5" />
+        <span>{agent.phone}</span>
+      </div>
+      {agent.email && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Mail className="w-3.5 h-3.5" />
+          <span className="truncate">{agent.email}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Building2 className="w-3.5 h-3.5" />
+        <span>{agent.propertiesCount} ملک ثبت شده</span>
+      </div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Calendar className="w-3.5 h-3.5" />
+        <span>
+          عضویت:{" "}
+          {new Date(agent.createdAt).toLocaleDateString(
+            "fa-IR",
+          )}
+        </span>
+      </div>
+    </div>
+  </CardContent>
+</Card>
               </motion.div>
             ))}
           </AnimatePresence>

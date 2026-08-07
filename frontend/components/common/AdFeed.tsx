@@ -49,7 +49,7 @@ interface AdFeedProps {
   clearFilters: () => void;
 }
 
-// ─── Section Header ──────────────────────────────────────
+// ─── Section Header (اصلاح‌شده) ──────────────────────────
 function SectionHeader({
   icon: Icon,
   title,
@@ -57,7 +57,7 @@ function SectionHeader({
   actionHref,
   actionLabel,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>; // ★ اصلاح‌شده
   title: string;
   colorClass?: string;
   actionHref?: string;
@@ -112,7 +112,13 @@ export default function AdFeed({
   setCurrentPage,
   clearFilters,
 }: AdFeedProps) {
-  const activeFilters: { label: string; icon?: React.ElementType; onRemove: () => void }[] = [];
+  // ★ اصلاح‌شده: نوع icon در activeFilters
+  const activeFilters: {
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    onRemove: () => void;
+  }[] = [];
+
   if (appliedCategory) {
     const cat = categories.find((c) => c.slug === appliedCategory);
     activeFilters.push({
@@ -372,48 +378,48 @@ export default function AdFeed({
             </section>
           )}
 
-     {popularAds.length > 0 && (
-  <section id="popular-ads">
-    <SectionHeader
-      icon={TrendingUp}
-      title="همه آگهی‌ها در ایران"
-      actionHref="/search"
-      actionLabel="مشاهده همه"
-    />
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0 sm:gap-3 max-sm:border-t max-sm:border-border/40">
-      {popularAds.map((ad, index) => (
-        <React.Fragment key={ad._id}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.03 }}
-            whileHover={{ y: -4 }}
-            className="flex flex-col h-full transition-shadow"
-          >
-            <AdCard
-              _id={ad._id}
-              title={ad.title}
-              price={ad.price || 0}
-              city={ad.city}
-              district={ad.district}
-              images={ad.images}
-              createdAt={ad.createdAt}
-              isUrgent={ad.isUrgent}
-              isVerified={ad.isVerified}
-              adType={ad.adType}
-              userRole={ad.userId?.role}
-            />
-          </motion.div>
-          {(index + 1) % 4 === 0 && (
-            <div className="col-span-full w-full py-4 max-sm:px-4">
-              <AdBanner position="home_top" />
-            </div>
+          {popularAds.length > 0 && (
+            <section id="popular-ads">
+              <SectionHeader
+                icon={TrendingUp}
+                title="همه آگهی‌ها در ایران"
+                actionHref="/search"
+                actionLabel="مشاهده همه"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0 sm:gap-3 max-sm:border-t max-sm:border-border/40">
+                {popularAds.map((ad, index) => (
+                  <React.Fragment key={ad._id}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.03 }}
+                      whileHover={{ y: -4 }}
+                      className="flex flex-col h-full transition-shadow"
+                    >
+                      <AdCard
+                        _id={ad._id}
+                        title={ad.title}
+                        price={ad.price || 0}
+                        city={ad.city}
+                        district={ad.district}
+                        images={ad.images}
+                        createdAt={ad.createdAt}
+                        isUrgent={ad.isUrgent}
+                        isVerified={ad.isVerified}
+                        adType={ad.adType}
+                        userRole={ad.userId?.role}
+                      />
+                    </motion.div>
+                    {(index + 1) % 4 === 0 && (
+                      <div className="col-span-full w-full py-4 max-sm:px-4">
+                        <AdBanner position="home_top" />
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </section>
           )}
-        </React.Fragment>
-      ))}
-    </div>
-  </section>
-)}
 
           {/* آخرین آگهی‌ها */}
           {latestAds.length > 0 && (

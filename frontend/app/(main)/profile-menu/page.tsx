@@ -1,5 +1,4 @@
 // app/profile-menu/page.tsx
-
 import ProfilePage from "@/components/profile/ProfilePage";
 
 export default function ProfileMenuPage() {

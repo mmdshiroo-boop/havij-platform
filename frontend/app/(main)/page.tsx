@@ -1,9 +1,7 @@
-//app/main/page
-
 "use client";
 
-import { Suspense } from "react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useAuth } from "@/app/context/AuthContext";
 import { adsApi, Ad } from "@/services/api/ads.api";
 import { categoryApi, Category } from "@/services/api/category.api";
 import { locationApi, Province } from "@/services/api/location.api";
@@ -11,9 +9,11 @@ import AdFeed from "@/components/common/AdFeed";
 import { FullPageSpinner } from "@/components/ui/skeletons";
 import { HeroSection } from "@/components/home/HeroSection";
 import { MobileCategories } from "@/components/mobile/mobile-categories";
+import { VipPromoCard } from "@/components/common/VipPromoCard";
 
-// ✅ کامپوننت داخلی جداگانه
 function HomePageContent() {
+  const { user } = useAuth();
+
   const [latestAds, setLatestAds] = useState<Ad[]>([]);
   const [urgentAds, setUrgentAds] = useState<Ad[]>([]);
   const [popularAds, setPopularAds] = useState<Ad[]>([]);
@@ -47,21 +47,35 @@ function HomePageContent() {
     })();
   }, []);
 
-  if (initialLoading) {
-    return <FullPageSpinner />;
-  }
+  if (initialLoading) return <FullPageSpinner />;
+
+  // نمایش کارت VIP فقط برای کاربر عادی یا مهمان
+  const showVipPromo = !user || user.role === "user";
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-full">
+      {/* دسته‌بندی سریع موبایل */}
       <div className="w-full md:hidden">
         <MobileCategories />
       </div>
 
-      <main className="w-full mt-2 md:mt-6 space-y-6">
-        <div className="hidden md:block">
-          <HeroSection />
-        </div>
+      <main className="w-full mt-1 md:mt-6 space-y-5 md:space-y-6">
+        {/* بنر اصلی هویج */}
+        <HeroSection />
 
+        {/* کارت VIP — فقط موبایل — فقط کاربر عادی/مهمان */}
+{showVipPromo && (
+  <div className="w-full px-3 sm:px-4">
+    <VipPromoCard
+      source="home"
+      title="بیشتر دیده شو، سریع‌تر بفروش"
+      description="با اشتراک VIP هویج، آگهی‌هات در صدر نتایج قرار می‌گیرن و به ابزارهای حرفه‌ای دسترسی پیدا می‌کنی."
+      ctaText="مشاهده پلن‌های VIP"
+    />
+  </div>
+)}
+
+        {/* فید آگهی‌ها */}
         <AdFeed
           isFiltered={false}
           filterLoading={false}
@@ -92,7 +106,6 @@ function HomePageContent() {
   );
 }
 
-// ✅ صفحه اصلی با Suspense wrap شده
 export default function HomePage() {
   return (
     <Suspense fallback={<FullPageSpinner />}>

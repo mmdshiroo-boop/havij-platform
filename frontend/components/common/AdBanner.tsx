@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   adBannerApi,
   AdBanner as AdBannerType,
 } from "@/services/api/adBanner.api";
-import { getImageUrl } from "@/lib/getImageUrl"; // ✅ helper مرکزی
+import { getImageUrl } from "@/lib/getImageUrl";
 
 interface AdBannerProps {
   position:
@@ -31,12 +29,15 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
 
   useEffect(() => {
     setImgError(false);
+    setLoading(true);
     adBannerApi
       .getByPosition(position)
       .then((data) => {
         if (data && data.length > 0) {
           setBanners(data);
           adBannerApi.trackView(data[0]._id).catch(console.error);
+        } else {
+          setBanners([]);
         }
       })
       .catch(console.error)
@@ -50,7 +51,7 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
       setCurrentIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % banners.length;
         adBannerApi.trackView(banners[nextIndex]._id).catch(console.error);
-        setImgError(false); // ریست خطا برای بنر جدید
+        setImgError(false); // بازنشانی خطا هنگام تعویض اسلاید
         return nextIndex;
       });
     }, 6000);
@@ -74,7 +75,9 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
       ? currentBanner.mobileImageUrl
       : currentBanner.imageUrl;
 
-  const imageUrl = getImageUrl(rawImageUrl); // ✅ تبدیل مسیر با helper
+  const imageUrl = rawImageUrl
+    ? getImageUrl(rawImageUrl)
+    : "/images/user.webp"; // fallback پیش‌فرض (می‌توانید تغییر دهید)
 
   const renderBannerContent = () => (
     <div className="relative w-full overflow-hidden rounded-xl bg-neutral-50 border border-neutral-100/80 group transition-all duration-300 shadow-sm hover:shadow-md">
@@ -127,3 +130,18 @@ export const AdBanner = ({ position, className = "" }: AdBannerProps) => {
     </div>
   );
 };
+
+// هوک useMediaQuery (اگر وجود نداشت اضافه کنید)
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    setMatches(media.matches);
+    const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+}
