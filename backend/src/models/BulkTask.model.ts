@@ -24,7 +24,7 @@ const BulkTaskSchema = new Schema<IBulkTask>(
       type: String,
       enum: ["processing", "completed", "failed"],
       default: "processing",
-    },
+    },filePath: { type: String },
     totalItems: { type: Number, required: true },
     processed: { type: Number, default: 0 },
     results: {
