@@ -12,32 +12,23 @@ import { sendNotificationToUser } from "../services/notification.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { detectCategory } from "../services/categoryMatcher.service";
 import { Category } from "../models";
-import { BulkTask } from "../models/BulkTask.model";   // ← جدید
+import { BulkTask } from "../models/BulkTask.model";
 
-// ══════════════════════════════════════════════
-// ۰. تنظیمات واترمارک + کش
-// ══════════════════════════════════════════════
-
+/* ──── تنظیمات واترمارک ──── */
 const adsUploadDir = path.resolve(process.cwd(), "uploads", "ads");
 const watermarkPath = path.resolve(process.cwd(), "assets", "watermark.png");
-
 let cachedWatermark: Buffer | null = null;
 
 async function getWatermark(): Promise<Buffer> {
   if (cachedWatermark) return cachedWatermark;
-  if (!fs.existsSync(watermarkPath)) {
-    throw new Error("فایل واترمارک یافت نشد");
-  }
+  if (!fs.existsSync(watermarkPath)) throw new Error("فایل واترمارک یافت نشد");
   cachedWatermark = await sharp(watermarkPath)
     .resize(500, null, { fit: "inside", withoutEnlargement: true })
     .toBuffer();
   return cachedWatermark!;
 }
 
-// ══════════════════════════════════════════════
-// ۰.۱ هم‌زمانی (concurrency pool)
-// ══════════════════════════════════════════════
-
+/* ──── هم‌زمانی ──── */
 async function asyncPool<T>(
   concurrency: number,
   items: T[],
@@ -59,10 +50,7 @@ async function asyncPool<T>(
   return Promise.all(ret);
 }
 
-// ══════════════════════════════════════════════
-// ۰.۲ دانلود تصویر (بهینه‌شده)
-// ══════════════════════════════════════════════
-
+/* ──── دانلود تصویر ──── */
 const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 10 });
 const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 10 });
 
@@ -73,18 +61,13 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
     try {
       const parsed = new URL(url);
       referer = parsed.origin;
-      if (url.includes("divarcdn.com") || url.includes("divar.ir")) {
+      if (url.includes("divarcdn.com") || url.includes("divar.ir"))
         referer = "https://divar.ir";
-      } else if (
-        url.includes("sheypoor.com") ||
-        url.includes("cdn.sheypoor.com")
-      ) {
+      else if (url.includes("sheypoor.com") || url.includes("cdn.sheypoor.com"))
         referer = "https://www.sheypoor.com";
-      }
     } catch {}
 
     const client = url.startsWith("https") ? https : http;
-
     const req = client.get(
       url,
       {
@@ -111,38 +94,29 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
             .catch(reject);
           return;
         }
-
         if (!res.statusCode || res.statusCode !== 200) {
           if (attempt < maxRetries) {
-            setTimeout(() => {
-              downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-            }, 500);
+            setTimeout(() => downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject), 500);
           } else {
             reject(new Error(`HTTP ${res.statusCode}`));
           }
           return;
         }
-
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("data", (chunk) => chunks.push(chunk));
         res.on("end", () => resolve(Buffer.concat(chunks)));
         res.on("error", (err) => {
           if (attempt < maxRetries) {
-            setTimeout(() => {
-              downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-            }, 500);
+            setTimeout(() => downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject), 500);
           } else {
             reject(err);
           }
         });
       },
     );
-
     req.on("error", (err) => {
       if (attempt < maxRetries) {
-        setTimeout(() => {
-          downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-        }, 500);
+        setTimeout(() => downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject), 500);
       } else {
         reject(err);
       }
@@ -150,9 +124,7 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
     req.on("timeout", () => {
       req.destroy();
       if (attempt < maxRetries) {
-        setTimeout(() => {
-          downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject);
-        }, 500);
+        setTimeout(() => downloadImageBuffer(url, attempt + 1).then(resolve).catch(reject), 500);
       } else {
         reject(new Error("timeout after retries"));
       }
@@ -160,25 +132,21 @@ function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
   });
 }
 
-// ══════════════════════════════════════════════
-// ۰.۳ دانلود + واترمارک + ذخیره (webp, resize)
-// ══════════════════════════════════════════════
-
+/* ──── واترمارک ──── */
 async function downloadAndWatermarkImage(
   imageUrl: string,
   adIndex: number,
   imgIndex: number,
 ): Promise<string> {
   try {
-    if (imageUrl.includes("/uploads/ads/")) return imageUrl;
     if (!imageUrl || typeof imageUrl !== "string") return imageUrl;
+    if (imageUrl.includes("/uploads/ads/")) return imageUrl;
 
     const imageBuffer = await downloadImageBuffer(imageUrl);
     if (!imageBuffer || imageBuffer.length < 1000) return imageUrl;
 
-    if (!fs.existsSync(adsUploadDir)) {
+    if (!fs.existsSync(adsUploadDir))
       fs.mkdirSync(adsUploadDir, { recursive: true });
-    }
 
     const filename = `bulk-${adIndex}-${imgIndex}-${Date.now()}.webp`;
     const filePath = path.join(adsUploadDir, filename);
@@ -202,14 +170,10 @@ async function downloadAndWatermarkImage(
     const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
     return `${baseUrl}/uploads/ads/${filename}`;
   } catch (err: any) {
-    console.error(`❌ خطا در پردازش تصویر: ${err?.message}`);
+    console.error(`❌ خطا در واترمارک: ${err.message}`);
     return imageUrl;
   }
 }
-
-// ══════════════════════════════════════════════
-// ۰.۴ پردازش همه تصاویر یک آگهی (۸ تایی هم‌زمان)
-// ══════════════════════════════════════════════
 
 async function processAdImages(
   images: string[],
@@ -221,9 +185,7 @@ async function processAdImages(
   );
 }
 
-// ══════════════════════════════════════════════
-// ۱. ابزارهای کمکی
-// ══════════════════════════════════════════════
+/* ──── ابزارهای کمکی ──── */
 
 function parseNumber(str: any): number {
   if (!str) return 0;
@@ -300,11 +262,18 @@ function detectPriceType(d: any, attrs: Record<string, string>): string {
 }
 
 function extractPrice(d: any, attrs: Record<string, string>): number {
-  if (d.rawJsonLd?.price && typeof d.rawJsonLd.price === 'number' && d.rawJsonLd.price > 0) {
+  if (
+    d.rawJsonLd?.price &&
+    typeof d.rawJsonLd.price === "number" &&
+    d.rawJsonLd.price > 0
+  ) {
     return d.rawJsonLd.price;
   }
-  if (typeof d.price === 'number' && d.price > 0) return d.price;
-  if (typeof d.price === 'string' && /^[\d,،٫.\s]+$/.test(d.price.trim())) {
+  if (typeof d.price === "number" && d.price > 0) return d.price;
+  if (
+    typeof d.price === "string" &&
+    /^[\d,،٫.\s]+$/.test(d.price.trim())
+  ) {
     const n = parseNumber(d.price);
     if (n > 0) return n;
   }
@@ -351,10 +320,6 @@ function isAdValid(payload: any): boolean {
   return hasDesc || hasImages || hasPrice;
 }
 
-// ══════════════════════════════════════════════
-// ۲. نگاشت نهایی (با استخراج تصاویر از همه منابع)
-// ══════════════════════════════════════════════
-
 function mapToAdPayload(
   item: any,
   uploaderId: string,
@@ -367,7 +332,6 @@ function mapToAdPayload(
   const isSheypoor = !!d.rawJsonLd;
 
   let title = (d.title || "").substring(0, 200) || "بدون عنوان";
-
   let description = d.description || "";
   if (isDivar && description === "توضیحات") {
     try {
@@ -380,43 +344,30 @@ function mapToAdPayload(
           .trim();
         if (real) description = real;
       }
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   let city = d.city || d.location || "نامشخص";
   let province = d.province || "";
   let district = d.district || "";
 
-  // ── استخراج تصاویر از تمام منابع ──
   let images: string[] = [];
-
-  // ۱. آرایه images در سطح data
   if (Array.isArray(d.images) && d.images.length > 0) {
     images = d.images;
   }
-
-  // ۲. دیوار: sections.IMAGE → IMAGE_CAROUSEL → items[].image.url
   if (images.length === 0 && d.rawData?.sections?.IMAGE) {
     const imageSection = d.rawData.sections.IMAGE;
     for (const widget of imageSection) {
       if (widget.widgetType === "IMAGE_CAROUSEL" && widget.dto?.data?.items) {
         for (const item of widget.dto.data.items) {
-          if (item.image?.url) {
-            images.push(item.image.url);
-          }
+          if (item.image?.url) images.push(item.image.url);
         }
       }
     }
   }
-
-  // ۳. شیپور قدیمی: rawMeta.image
   if (images.length === 0 && d.rawMeta?.image) {
     images = [d.rawMeta.image];
   }
-
-  // ۴. fallback به فیلد image سطح بالا
   if (images.length === 0 && d.image) {
     images = Array.isArray(d.image) ? d.image : [d.image];
   }
@@ -438,14 +389,12 @@ function mapToAdPayload(
   let adType = "sale";
   if (isSheypoor) adType = d.category === "forSale" ? "sale" : "rent";
   if (isDivar && d.category?.includes("اجاره")) {
-    adType =
-      d.category.includes("روزانه") || d.category.includes("کوتاه‌مدت")
-        ? "daily_rent"
-        : "rent";
+    adType = d.category.includes("روزانه") || d.category.includes("کوتاه‌مدت")
+      ? "daily_rent"
+      : "rent";
   }
 
   const attrs = isDivar ? parseDivarAttributes(d.attributes) : {};
-
   const price = extractPrice(d, attrs);
   const priceType = detectPriceType(d, attrs);
 
@@ -469,7 +418,6 @@ function mapToAdPayload(
   let rooms = 0;
   let area = 0;
   let capacity = 0;
-
   if (isDivar) {
     rooms = parseNumber(attrs["اتاق"]);
     area = parseNumber(attrs["متراژ"] || attrs["متراژ ویلا"]);
@@ -519,40 +467,24 @@ function mapToAdPayload(
     isUrgent: false,
     userId: uploaderId,
     uploadedBy: uploaderId,
-    expiresAt: (() => {
-      const exp = new Date();
-      exp.setDate(exp.getDate() + 30);
-      return exp;
-    })(),
+    expiresAt: new Date(Date.now() + 30 * 86400000),
   };
 }
 
-// ══════════════════════════════════════════════
-// ۳. کنترلر اصلی (اصلاح‌شده)
-// ══════════════════════════════════════════════
-
+/* ──── کنترلر اصلی ──── */
 export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?._id;
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "لطفاً وارد شوید" });
-    }
+    if (!userId)
+      return res.status(401).json({ success: false, message: "لطفاً وارد شوید" });
 
     const files = (req as any).files;
-    if (!files || !files.zipFile) {
-      return res
-        .status(400)
-        .json({ success: false, message: "فایل ZIP الزامی است" });
-    }
+    if (!files || !files.zipFile)
+      return res.status(400).json({ success: false, message: "فایل ZIP الزامی است" });
 
     const zipFile = files.zipFile as any;
-    if (!zipFile.name.endsWith(".zip")) {
-      return res
-        .status(400)
-        .json({ success: false, message: "فقط فایل‌های ZIP مجاز هستند" });
-    }
+    if (!zipFile.name.endsWith(".zip"))
+      return res.status(400).json({ success: false, message: "فقط فایل‌های ZIP مجاز هستند" });
 
     const tempDir = path.resolve(process.cwd(), "temp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -566,12 +498,8 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
     );
 
     if (jsonFiles.length === 0) {
-      try {
-        fs.unlinkSync(tempPath);
-      } catch {}
-      return res
-        .status(400)
-        .json({ success: false, message: "هیچ فایل JSON در ZIP یافت نشد" });
+      try { fs.unlinkSync(tempPath); } catch {}
+      return res.status(400).json({ success: false, message: "هیچ فایل JSON در ZIP یافت نشد" });
     }
 
     const allItems: { item: any; fileName: string; index: number }[] = [];
@@ -580,29 +508,20 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
         const content = entry.getData().toString("utf8");
         const parsed = JSON.parse(content);
         const items = Array.isArray(parsed) ? parsed : [parsed];
-        items.forEach((item, idx) => {
-          allItems.push({ item, fileName: entry.entryName, index: idx });
-        });
-      } catch (parseErr: any) {
-        console.error(
-          `❌ خطا در تجزیه فایل ${entry.entryName}:`,
-          parseErr.message,
+        items.forEach((item, idx) =>
+          allItems.push({ item, fileName: entry.entryName, index: idx }),
         );
+      } catch (parseErr: any) {
+        console.error(`❌ خطا در تجزیه فایل ${entry.entryName}:`, parseErr.message);
       }
     }
 
-    try {
-      fs.unlinkSync(tempPath);
-    } catch {}
+    try { fs.unlinkSync(tempPath); } catch {}
 
-    if (allItems.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "هیچ فایل JSON معتبری در ZIP یافت نشد",
-      });
-    }
+    if (allItems.length === 0)
+      return res.status(400).json({ success: false, message: "هیچ فایل JSON معتبری در ZIP یافت نشد" });
 
-    // ─── ایجاد تسک ───
+    // ایجاد تسک
     const task = await BulkTask.create({
       userId,
       status: "processing",
@@ -613,10 +532,9 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
 
     const expertPhone = req.user.phone || "09120000000";
     const expertName =
-      `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
-      req.user.phone;
+      `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.phone;
 
-    // ─── اجرای پردازش در پس‌زمینه (بدون await) ───
+    // اجرای پردازش در پس‌زمینه
     processAndSaveAdsAsync(
       allItems,
       userId.toString(),
@@ -633,13 +551,13 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
         });
       })
       .catch((err) => {
+        console.error("Bulk processing fatal error:", err);
         BulkTask.findByIdAndUpdate(task._id, {
           status: "failed",
           error: err.message,
         });
       });
 
-    // ─── پاسخ فوری به کلاینت ───
     return res.status(202).json({
       success: true,
       message: "فایل دریافت شد و در صف پردازش قرار گرفت.",
@@ -647,18 +565,12 @@ export const uploadBulkAds = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error("❌ Bulk upload error:", error);
-    if (!res.headersSent) {
-      return res
-        .status(500)
-        .json({ success: false, message: "خطا در تزریق فله‌ای آگهی‌ها" });
-    }
+    if (!res.headersSent)
+      res.status(500).json({ success: false, message: "خطا در تزریق فله‌ای آگهی‌ها" });
   }
 };
 
-// ══════════════════════════════════════════════
-// ۴. پردازش نهایی (۱۰ آگهی هم‌زمان)
-// ══════════════════════════════════════════════
-
+/* ──── پردازش در پس‌زمینه ──── */
 async function processAndSaveAdsAsync(
   items: { item: any; fileName: string; index: number }[],
   userId: string,
@@ -674,25 +586,39 @@ async function processAndSaveAdsAsync(
     watermarkApplied: 0,
     details: [] as any[],
   };
+  let processedCount = 0;
+  const total = items.length;
 
-  await asyncPool(10, items, async ({ item, fileName, index }) => {
+  const updateTask = async () => {
+    await BulkTask.findByIdAndUpdate(taskId, {
+      $set: {
+        processed: processedCount,
+        results: {
+          success: results.success,
+          errors: results.errors,
+          skipped: results.skipped,
+          watermarkApplied: results.watermarkApplied,
+          details: results.details.slice(-300), // فقط ۳۰۰ خطای آخر
+        },
+      },
+    });
+  };
+
+  await updateTask(); // صفر اولیه
+
+  await asyncPool(5, items, async ({ item, fileName, index }) => {
     const identifier = `${fileName}[${index}]`;
     try {
       let categoryId: string | undefined;
       try {
-        const detected = await detectCategory(item);
-        if (detected) categoryId = detected;
-      } catch (detectErr) {
-        console.warn("⚠️ detectCategory failed:", detectErr);
-      }
+        categoryId = await detectCategory(item);
+      } catch {}
       if (!categoryId) {
-        const fallbackCategory = await Category.findOne({
-          slug: "real-estate",
-        });
-        if (fallbackCategory) categoryId = fallbackCategory._id.toString();
+        const fallback = await Category.findOne({ slug: "real-estate" });
+        if (fallback) categoryId = fallback._id.toString();
       }
 
-      const adPayload = mapToAdPayload(
+      const payload = mapToAdPayload(
         item,
         userId,
         categoryId || "000000000000000000000000",
@@ -700,25 +626,24 @@ async function processAndSaveAdsAsync(
         expertName,
       );
 
-      if (!isAdValid(adPayload)) {
+      if (!isAdValid(payload)) {
         results.skipped++;
         results.details.push({
           row: identifier,
           index: index + 1,
-          message: "آگهی به دلیل نداشتن اطلاعات کافی رد شد.",
+          message: "ناکافی",
         });
         return;
       }
 
-      if (Array.isArray(adPayload.images) && adPayload.images.length > 0) {
-        adPayload.images = await processAdImages(adPayload.images, index);
-        const watermarkedCount = adPayload.images.filter((img: string) =>
+      if (payload.images?.length) {
+        payload.images = await processAdImages(payload.images, index);
+        results.watermarkApplied += payload.images.filter((img) =>
           img.includes("/uploads/ads/bulk-"),
         ).length;
-        results.watermarkApplied += watermarkedCount;
       }
 
-      const ad = new Ad(adPayload);
+      const ad = new Ad(payload);
       await ad.save();
 
       await createAuditLog({
@@ -726,41 +651,40 @@ async function processAndSaveAdsAsync(
         action: AuditAction.AD_CREATED,
         resource: "Ad",
         resourceId: ad._id.toString(),
-        description: `کارشناس ${expertName} آگهی فله‌ای «${ad.title}» را ایجاد کرد.`,
-        metadata: { source: adPayload.source, originalId: adPayload.sourceId },
+        description: `کارشناس ${expertName} آگهی «${ad.title}» را ایجاد کرد.`,
+        metadata: { source: payload.source },
         req,
       });
 
       results.success++;
-    } catch (itemErr: any) {
+    } catch (err: any) {
       results.errors++;
       results.details.push({
         row: identifier,
         index: index + 1,
-        message: itemErr.message,
+        message: err.message,
       });
+    } finally {
+      processedCount++;
+      if (processedCount % 50 === 0 || processedCount === total) {
+        await updateTask();
+      }
     }
   });
+
+  await updateTask(); // نهایی
 
   if (results.success > 0) {
     await sendNotificationToUser(
       userId,
       "تزریق فله‌ای انجام شد",
-      `${results.success} آگهی ایجاد و فعال شد.${results.watermarkApplied > 0 ? ` (${results.watermarkApplied} تصویر واترمارک شد)` : ""}${results.errors ? ` (${results.errors} خطا)` : ""}${results.skipped ? ` (${results.skipped} رد شده)` : ""}`,
+      `${results.success} آگهی ایجاد و فعال شد.${results.watermarkApplied ? ` (${results.watermarkApplied} واترمارک)` : ""}${results.errors ? ` (${results.errors} خطا)` : ""}`,
       "info",
       "/panel/expert/bulk-upload",
-      {
-        success: results.success,
-        errors: results.errors,
-        skipped: results.skipped,
-        watermarkApplied: results.watermarkApplied,
-      },
+      results,
     );
   }
 
-  console.log(
-    `🏁 پردازش فله‌ای به پایان رسید: ${results.success} موفق، ${results.watermarkApplied} واترمارک، ${results.skipped} رد شده، ${results.errors} خطا`,
-  );
-
+  console.log(`🏁 پایان پردازش: ${results.success} موفق`);
   return results;
 }

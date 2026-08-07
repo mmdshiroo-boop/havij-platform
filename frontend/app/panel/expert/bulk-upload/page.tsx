@@ -62,18 +62,20 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
 export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0); // درصد آپلود فایل
+  const [processingProgress, setProcessingProgress] = useState(0); // درصد پردازش
   const [result, setResult] = useState<any>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [taskId, setTaskId] = useState<string | null>(null);   // ★ جدید
+  const [taskId, setTaskId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File | null) => {
     if (f && f.name.endsWith(".zip")) {
       setFile(f);
       setResult(null);
-      setProgress(0);
-      setTaskId(null); // ریست تسک قبلی
+      setUploadProgress(0);
+      setProcessingProgress(0);
+      setTaskId(null);
     } else if (f) {
       toast.error("فقط فایل‌های ZIP مجاز هستند.");
     }
@@ -92,7 +94,7 @@ export default function BulkUploadPage() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
-    setProgress(0);
+    setUploadProgress(0);
     setResult(null);
     const formData = new FormData();
     formData.append("zipFile", file);
@@ -100,19 +102,18 @@ export default function BulkUploadPage() {
     try {
       const res = await apiClient.post("/expert/bulk-ads", formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 600000, // فقط برای آپلود فایل
+        timeout: 600000,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const pct = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total,
             );
-            setProgress(pct);
+            setUploadProgress(pct);
           }
         },
       });
-      // دریافت taskId و اتمام آپلود
       setTaskId(res.data.taskId);
-      setProgress(100);
+      setUploadProgress(100);
       toast.success(res.data.message || "فایل دریافت شد. در حال پردازش...");
     } catch (err: any) {
       if (err.code === "ECONNABORTED") {
@@ -125,23 +126,30 @@ export default function BulkUploadPage() {
     }
   };
 
-  // Polling برای دریافت نتیجه
+  // Polling وضعیت تسک
   useEffect(() => {
     if (!taskId) return;
     const interval = setInterval(async () => {
       try {
         const { data } = await apiClient.get(`/expert/bulk-ads/${taskId}/status`);
-        if (data.data.status === "completed") {
-          setResult(data.data.results);
+        const task = data.data;
+        if (task.status === "completed") {
+          setResult(task.results);
+          setProcessingProgress(100);
           toast.success("پردازش کامل شد");
           clearInterval(interval);
           setTaskId(null);
-        } else if (data.data.status === "failed") {
-          toast.error(data.data.error || "خطا در پردازش");
+        } else if (task.status === "failed") {
+          toast.error(task.error || "خطا در پردازش");
           clearInterval(interval);
           setTaskId(null);
+        } else {
+          // محاسبه درصد پیشرفت پردازش
+          const progress = task.totalItems > 0
+            ? Math.round((task.processed / task.totalItems) * 100)
+            : 0;
+          setProcessingProgress(progress);
         }
-        // می‌توانید درصد پیشرفت پردازش را نیز نمایش دهید (با data.data.processed / data.data.totalItems)
       } catch (err) {
         console.error("Polling error:", err);
       }
@@ -152,7 +160,8 @@ export default function BulkUploadPage() {
   const clearFile = () => {
     setFile(null);
     setResult(null);
-    setProgress(0);
+    setUploadProgress(0);
+    setProcessingProgress(0);
     setTaskId(null);
   };
 
@@ -170,7 +179,7 @@ export default function BulkUploadPage() {
       className="space-y-6 px-3 sm:px-6 pb-8"
       dir="rtl"
     >
-      {/* ──────── هدر ──────── */}
+      {/* هدر */}
       <motion.div
         variants={itemVariants}
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 rounded-2xl border border-primary/20 bg-gradient-to-l from-primary/10 via-primary/5 to-transparent"
@@ -188,7 +197,7 @@ export default function BulkUploadPage() {
             </p>
           </div>
         </div>
-        {file && !uploading && (
+        {file && !uploading && !taskId && (
           <Button
             onClick={handleUpload}
             className="rounded-xl gap-2 h-10 px-6 text-sm font-bold shadow-md shadow-primary/10"
@@ -211,7 +220,7 @@ export default function BulkUploadPage() {
         )}
       </motion.div>
 
-      {/* ──────── ناحیهٔ آپلود ──────── */}
+      {/* ناحیهٔ آپلود */}
       <motion.div variants={itemVariants}>
         <Card
           className={cn(
@@ -283,27 +292,34 @@ export default function BulkUploadPage() {
                     </Button>
                   </div>
 
+                  {/* Progress آپلود فایل */}
                   {uploading && (
                     <div className="mt-5 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">در حال آپلود فایل</span>
+                        <span className="text-muted-foreground">آپلود فایل</span>
                         <span className="tabular-nums font-mono font-bold text-primary">
-                          {progress}%
+                          {uploadProgress}%
                         </span>
                       </div>
-                      <Progress value={progress} className="h-2" />
+                      <Progress value={uploadProgress} className="h-2" />
                     </div>
                   )}
 
+                  {/* Progress پردازش */}
                   {taskId && (
                     <div className="mt-5 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">در حال پردازش آگهی‌ها</span>
+                        <span className="text-muted-foreground">پردازش آگهی‌ها</span>
                         <span className="tabular-nums font-mono font-bold text-primary">
-                          <Loader2 className="w-3.5 h-3.5 inline animate-spin ml-1" />
+                          {processingProgress}%
                         </span>
                       </div>
-                      <Progress value={100} className="h-2" />
+                      <Progress value={processingProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground text-center">
+                        {processingProgress < 100
+                          ? "در حال بررسی و ذخیرهٔ آگهی‌ها..."
+                          : "پردازش کامل شد"}
+                      </p>
                     </div>
                   )}
                 </motion.div>
@@ -324,7 +340,7 @@ export default function BulkUploadPage() {
         }}
       />
 
-      {/* ──────── نتایج ──────── */}
+      {/* نتایج */}
       <AnimatePresence>
         {result && (
           <motion.div
@@ -334,7 +350,6 @@ export default function BulkUploadPage() {
             exit="hidden"
             className="space-y-5"
           >
-            {/* تیتر */}
             <div className="flex items-center gap-3">
               <div className="p-1.5 bg-primary/10 rounded-lg">
                 <Sparkles className="w-5 h-5 text-primary" />
@@ -344,7 +359,6 @@ export default function BulkUploadPage() {
               </h2>
             </div>
 
-            {/* کارت‌های آماری */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card className="border-emerald-500/20 bg-emerald-500/5 shadow-sm rounded-2xl">
                 <CardContent className="p-5 flex items-center gap-4">
@@ -389,7 +403,6 @@ export default function BulkUploadPage() {
               </Card>
             </div>
 
-            {/* جزئیات خطاها */}
             {result.details?.length > 0 && (
               <Card className="border-border/60 shadow-sm rounded-2xl overflow-hidden bg-card/80 backdrop-blur-sm">
                 <CardContent className="p-5">
@@ -408,9 +421,7 @@ export default function BulkUploadPage() {
                           <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded ml-1">
                             #{d.index ?? i + 1}
                           </span>
-                          <span className="text-muted-foreground">
-                            {d.message}
-                          </span>
+                          <span className="text-muted-foreground">{d.message}</span>
                         </li>
                       ))}
                     </ul>
@@ -419,7 +430,6 @@ export default function BulkUploadPage() {
               </Card>
             )}
 
-            {/* دکمهٔ بارگذاری جدید */}
             <div className="flex justify-end">
               <Button
                 variant="outline"
