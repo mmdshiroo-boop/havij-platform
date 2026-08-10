@@ -78,7 +78,7 @@ app.use(cookieParser());
 app.use(
   fileUpload({
     createParentPath: true,
-    limits: { fileSize: 50 * 1024 * 1024 }, // ۵۰ مگابایت
+    limits: { fileSize: 200 * 1024 * 1024 }, // ۲۰۰ مگابایت
     useTempFiles: false,
     abortOnLimit: true,
   }),
@@ -94,7 +94,7 @@ app.use("/api/public", publicRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/market-analysis", marketAnalysisRoutes);
 app.use("/api/market", marketRoutes);
-app.use("/api/locations", locationRoutes); // شامل استان‌ها، شهرها، IP و Reverse Geocode
+app.use("/api/locations", locationRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/ads", adRoutes);
 app.use("/api/page-view", pageViewRoutes);
@@ -102,11 +102,10 @@ app.use("/api/bot", botRoutes);
 app.use("/api", chatRouter);
 app.use("/api", messageRouter);
 
-// ایجاد درخواست مشاوره (عمومی یا نیمه‌خصوصی)
 app.post("/api/consulting", consultingRoutes);
 
 // ============================================================
-// مسیرهای محافظت‌شده (نیاز به لاگین و احراز هویت - Protect)
+// مسیرهای محافظت‌شده
 // ============================================================
 app.use("/api", protect);
 app.use(cookieAuditMiddleware);
@@ -134,12 +133,7 @@ app.use("/api/graph", graphRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/watermark", watermarkRoutes);
 
-// ============================================================
-// مسیرهای پنل ادمین و نقشه (همگام‌سازی شده با پیشوند /api/locations)
-// ============================================================
-// این بخش مشکل خطای 404 نقشه را به طور کامل برطرف می‌کند
 app.use("/api/locations", locationMapRoutes);
-
 app.use("/api/admin", adminRoutes);
 app.use("/api/super-admin/financial", financialRoutes);
 app.use("/api/super-admin", superAdminRoutes);
@@ -168,6 +162,19 @@ if (!fs.existsSync(uploadDir)) {
 app.use(errorHandler);
 
 // ============================================================
+// 🛡️ محافظت از سرور در برابر خطاهای کشنده (Uncaught)
+// ============================================================
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  // سرور را عمداً خاموش نمی‌کنیم
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 Unhandled Rejection at:', promise, 'reason:', reason);
+  // سرور را عمداً خاموش نمی‌کنیم
+});
+
+// ============================================================
 // راه‌اندازی سرور و اتصال به دیتابیس
 // ============================================================
 const PORT = parseInt(process.env.PORT || "5001", 10);
@@ -177,7 +184,7 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ Database connected successfully.");
 
-    // 🟢 راه‌اندازی Worker پردازش فله‌ای (بعد از دیتابیس، قبل از سرور)
+    // 🟢 راه‌اندازی Worker پردازش فله‌ای
     startBulkWorker();
     console.log("🔄 Bulk worker started in background.");
 

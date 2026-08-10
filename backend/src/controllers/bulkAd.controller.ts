@@ -44,8 +44,8 @@ async function asyncPool<T>(concurrency: number, items: T[], iteratorFn: (item: 
   return Promise.all(ret);
 }
 
-const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 50 });
-const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 50 });
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 20 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20 });
 
 function downloadImageBuffer(url: string, attempt = 0): Promise<Buffer> {
   const maxRetries = 2;
@@ -130,7 +130,7 @@ async function downloadAndWatermarkImage(imageUrl: string, adIndex: number, imgI
 
 async function processAdImages(images: string[], adIndex: number): Promise<string[]> {
   if (!Array.isArray(images) || images.length === 0) return images;
-  return asyncPool(20, images, (url, idx) => downloadAndWatermarkImage(url, adIndex, idx));
+  return asyncPool(5, images, (url, idx) => downloadAndWatermarkImage(url, adIndex, idx));
 }
 
 // ═══════════️ ابزارهای عددی ════════════
@@ -277,11 +277,6 @@ async function getCategoryId(title: string, description: string): Promise<string
 
 // ═══════════️ تشخیص آگهی غیرفعال ════════════
 function isAdUnavailable(d: any): boolean {
-  // غیرفعال‌سازی بررسی تاریخ انقضای دیوار
-  // if (d.rawData?.seo?.unavailableAfter) {
-  //   const date = new Date(d.rawData.seo.unavailableAfter);
-  //   if (!isNaN(date.getTime()) && date < new Date()) return true;
-  // }
   if (d.status === "sold" || d.status === "expired" || d.status === "deleted") return true;
   if (d.sold === true || d.expired === true) return true;
   return false;
@@ -292,7 +287,7 @@ function getSourceId(item: any): string {
   return d.token || d.id || item.id || `bulk_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
 }
 
-// ═══════════️ نگاشت نهایی (بهبودیافته برای دیوار) ════════════
+// ═══════════️ نگاشت نهایی ════════════
 function mapToAdPayload(
   item: any,
   uploaderId: string,
@@ -306,7 +301,6 @@ function mapToAdPayload(
 
   let title = (d.title || "").substring(0, 200) || "بدون عنوان";
 
-  // ── توضیحات (اولویت با seo.description) ──
   let description = d.description || "";
   if (isDivar) {
     if (!description || description === "توضیحات" || description.trim().length < 10) {
@@ -329,7 +323,6 @@ function mapToAdPayload(
     }
   }
 
-  // ── موقعیت مکانی ──
   let city = "", province = "", district = "", latitude: number | undefined, longitude: number | undefined;
   if (isDivar) {
     city = d.city || "";
@@ -358,7 +351,6 @@ function mapToAdPayload(
     if (!province) province = d.province || "";
   }
 
-  // ── تصاویر (تلاش چندلایه) ──
   let images: string[] = [];
   if (Array.isArray(d.images) && d.images.length > 0) {
     images = d.images;
@@ -379,7 +371,6 @@ function mapToAdPayload(
     images = [d.image];
   }
 
-  // ── نوع آگهی ──
   let adType = "sale";
   if (isDivar) {
     const cat = d.category || "";
@@ -391,7 +382,6 @@ function mapToAdPayload(
     else if (d.category === "forRent" || d.category?.includes("اجاره")) adType = "rent";
   }
 
-  // ── ویژگی‌ها ──
   let attrs: Record<string, string> = {};
   if (isDivar && Array.isArray(d.attributes)) {
     d.attributes.forEach((attr: any) => {
@@ -519,10 +509,9 @@ function mapToAdPayload(
   };
 }
 
-// آستانه‌ی پذیرش کمی آسان‌تر
 function isAdValid(payload: any): boolean {
   if (!payload.title || payload.title.trim().length < 3) return false;
-  const hasDesc = payload.description && payload.description.trim().length > 5; // ۵ کاراکتر
+  const hasDesc = payload.description && payload.description.trim().length > 5;
   const hasImages = Array.isArray(payload.images) && payload.images.length > 0;
   const hasPrice = payload.price > 0;
   return hasDesc || hasImages || hasPrice;
@@ -585,7 +574,7 @@ export const getTaskStatus = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// ═══════════️ Worker پس‌زمینه ════════════
+// ═══════════️ Worker پس‌زمینه (با تایم‌اوت و هم‌روندی کاهش‌یافته) ════════════
 let isWorkerRunning = false;
 export function startBulkWorker() {
   setInterval(async () => {
@@ -604,7 +593,6 @@ export function startBulkWorker() {
 }
 
 async function processBulkTask(taskId: any) {
-  // قاپیدن اتمی تسک
   const task = await BulkTask.findOneAndUpdate(
     { _id: taskId, status: "pending" },
     { status: "processing" },
@@ -612,155 +600,167 @@ async function processBulkTask(taskId: any) {
   );
   if (!task) return;
 
+  // تایم‌اوت ۳۰ دقیقه برای کل تسک
+  const TIMEOUT_MS = 30 * 60 * 1000;
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("پردازش تسک بیش از حد طول کشید (تایم‌اوت)")), TIMEOUT_MS)
+  );
+
   try {
-    if (!fs.existsSync(task.fileName)) throw new Error("فایل ZIP یافت نشد");
-    const zip = new AdmZip(task.fileName);
-    const entries = zip.getEntries();
-    const jsonFiles = entries.filter(e => !e.isDirectory && e.entryName.endsWith(".json"));
-    if (jsonFiles.length === 0) throw new Error("هیچ فایل JSON در ZIP یافت نشد");
-
-    const allItems: { item: any; fileName: string; index: number }[] = [];
-    for (const entry of jsonFiles) {
-      try {
-        const content = entry.getData().toString("utf8");
-        const parsed = JSON.parse(content);
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        items.forEach((item, idx) => allItems.push({ item, fileName: entry.entryName, index: idx }));
-      } catch {}
-    }
-
-    fs.unlink(task.fileName, () => {});
-
-    await BulkTask.findByIdAndUpdate(taskId, { 'progress.total': allItems.length });
-
-    const sourceIds = allItems.map(({ item }) => getSourceId(item));
-    const existingAds = await Ad.find(
-      { source: { $in: ["divar", "sheypoor", "bama", "manual"] }, sourceId: { $in: sourceIds } },
-      { sourceId: 1, source: 1 }
-    ).lean();
-    const existingSourceIds = new Set(existingAds.map((ad: any) => ad.sourceId));
-
-    const expert = await (await import("../models/Expert.model")).Expert.findOne({ userId: task.userId });
-    const expertPhone = expert?.phone || "09120000000";
-    const expertName = `${expert?.firstName || ""} ${expert?.lastName || ""}`.trim() || expertPhone;
-
-    const adDocs: any[] = [];
-    const auditLogDocs: any[] = [];
-    let successCount = 0, errorCount = 0, skipCount = 0;
-    const errorLog: any[] = [];
-    let processedCount = 0;
-    let lastSaveTime = Date.now();
-
-    const maybeSaveTask = async () => {
-      const now = Date.now();
-      if (processedCount % 20 === 0 || now - lastSaveTime > 5000) {
-        const safeProcessed = Math.min(processedCount, allItems.length);
-        await BulkTask.findByIdAndUpdate(taskId, {
-          $set: {
-            'progress.processed': safeProcessed,
-            'progress.success': successCount,
-            'progress.errors': errorCount,
-            'progress.skipped': skipCount,
-          }
-        }).catch(e => console.error("save task error:", e));
-        lastSaveTime = now;
-      }
-    };
-
-    await asyncPool(50, allItems, async ({ item, fileName, index }) => {
-      const identifier = `${fileName}[${index}]`;
-      try {
-        const d = item.data || item;
-
-        if (isAdUnavailable(d)) {
-          skipCount++;
-          errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "آگهی در منبع اصلی فروخته یا حذف شده است" });
-          processedCount++;
-          await maybeSaveTask();
-          return;
-        }
-
-        const sourceId = getSourceId(item);
-        if (existingSourceIds.has(sourceId)) {
-          skipCount++;
-          errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "آگهی تکراری (قبلاً ثبت شده)" });
-          processedCount++;
-          await maybeSaveTask();
-          return;
-        }
-
-        const categoryId = await getCategoryId(d.title || "", d.description || "");
-        const catId = categoryId || "000000000000000000000000";
-        const adPayload = mapToAdPayload(item, task.userId.toString(), expertPhone, expertName, catId);
-
-        if (!isAdValid(adPayload)) {
-          skipCount++;
-          errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "اطلاعات کافی نیست" });
-          processedCount++;
-          await maybeSaveTask();
-          return;
-        }
-
-        if (Array.isArray(adPayload.images) && adPayload.images.length > 0) {
-          adPayload.images = await processAdImages(adPayload.images, index);
-        }
-
-        adDocs.push(adPayload);
-        auditLogDocs.push({
-          userId: task.userId,
-          action: AuditAction.AD_CREATED,
-          resource: "Ad",
-          resourceId: null,
-          description: `کارشناس ${expertName} آگهی فله‌ای «${adPayload.title}» را ایجاد کرد.`,
-          metadata: { source: adPayload.source, originalId: adPayload.sourceId },
-          createdAt: new Date(),
-        });
-        successCount++;
-      } catch (itemErr: any) {
-        errorCount++;
-        errorLog.push({ row: identifier, index: index + 1, type: "error", message: itemErr.message });
-      } finally {
-        processedCount++;
-        await maybeSaveTask();
-      }
-    });
-
-    if (adDocs.length > 0) {
-      const insertedAds = await Ad.insertMany(adDocs, { ordered: false });
-      auditLogDocs.forEach((log, idx) => {
-        if (insertedAds[idx]) log.resourceId = insertedAds[idx]._id;
-      });
-    }
-    if (auditLogDocs.length > 0) {
-      await AuditLog.insertMany(auditLogDocs, { ordered: false });
-    }
-
-    await BulkTask.findByIdAndUpdate(taskId, {
-      $set: {
-        status: "completed",
-        progress: {
-          total: allItems.length,
-          processed: allItems.length,
-          success: successCount,
-          errors: errorCount,
-          skipped: skipCount,
-        },
-        errorLog: errorLog,
-      }
-    });
-
-    await sendNotificationToUser(
-      task.userId.toString(),
-      "تکمیل بارگذاری فله‌ای",
-      `${successCount} آگهی ایجاد شد.${errorCount ? ` (${errorCount} خطا)` : ""}${skipCount ? ` (${skipCount} رد شده)` : ""}`,
-      "info",
-      "/panel/expert/bulk-upload",
-      { success: successCount, errors: errorCount, skipped: skipCount }
-    );
+    await Promise.race([processTaskInternal(task), timeoutPromise]);
   } catch (err: any) {
+    console.error("Bulk task failed:", err.message);
     await BulkTask.findByIdAndUpdate(taskId, {
       $set: { status: "failed" },
       $push: { errorLog: { row: "system", index: 0, type: "error", message: err.message } }
     });
   }
+}
+
+async function processTaskInternal(task: any) {
+  if (!fs.existsSync(task.fileName)) throw new Error("فایل ZIP یافت نشد");
+  const zip = new AdmZip(task.fileName);
+  const entries = zip.getEntries();
+  const jsonFiles = entries.filter(e => !e.isDirectory && e.entryName.endsWith(".json"));
+  if (jsonFiles.length === 0) throw new Error("هیچ فایل JSON در ZIP یافت نشد");
+
+  const allItems: { item: any; fileName: string; index: number }[] = [];
+  for (const entry of jsonFiles) {
+    try {
+      const content = entry.getData().toString("utf8");
+      const parsed = JSON.parse(content);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      items.forEach((item, idx) => allItems.push({ item, fileName: entry.entryName, index: idx }));
+    } catch {}
+  }
+
+  fs.unlink(task.fileName, () => {});
+
+  await BulkTask.findByIdAndUpdate(task._id, { 'progress.total': allItems.length });
+
+  const sourceIds = allItems.map(({ item }) => getSourceId(item));
+  const existingAds = await Ad.find(
+    { source: { $in: ["divar", "sheypoor", "bama", "manual"] }, sourceId: { $in: sourceIds } },
+    { sourceId: 1, source: 1 }
+  ).lean();
+  const existingSourceIds = new Set(existingAds.map((ad: any) => ad.sourceId));
+
+  const expert = await (await import("../models/Expert.model")).Expert.findOne({ userId: task.userId });
+  const expertPhone = expert?.phone || "09120000000";
+  const expertName = `${expert?.firstName || ""} ${expert?.lastName || ""}`.trim() || expertPhone;
+
+  const adDocs: any[] = [];
+  const auditLogDocs: any[] = [];
+  let successCount = 0, errorCount = 0, skipCount = 0;
+  const errorLog: any[] = [];
+  let processedCount = 0;
+  let lastSaveTime = Date.now();
+
+  const maybeSaveTask = async () => {
+    const now = Date.now();
+    if (processedCount % 20 === 0 || now - lastSaveTime > 5000) {
+      const safeProcessed = Math.min(processedCount, allItems.length);
+      await BulkTask.findByIdAndUpdate(task._id, {
+        $set: {
+          'progress.processed': safeProcessed,
+          'progress.success': successCount,
+          'progress.errors': errorCount,
+          'progress.skipped': skipCount,
+        }
+      }).catch(e => console.error("save task error:", e));
+      lastSaveTime = now;
+    }
+  };
+
+  // هم‌روندی کاهش یافته برای پایداری
+  await asyncPool(10, allItems, async ({ item, fileName, index }) => {
+    const identifier = `${fileName}[${index}]`;
+    try {
+      const d = item.data || item;
+
+      if (isAdUnavailable(d)) {
+        skipCount++;
+        errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "آگهی در منبع اصلی فروخته یا حذف شده است" });
+        processedCount++;
+        await maybeSaveTask();
+        return;
+      }
+
+      const sourceId = getSourceId(item);
+      if (existingSourceIds.has(sourceId)) {
+        skipCount++;
+        errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "آگهی تکراری (قبلاً ثبت شده)" });
+        processedCount++;
+        await maybeSaveTask();
+        return;
+      }
+
+      const categoryId = await getCategoryId(d.title || "", d.description || "");
+      const catId = categoryId || "000000000000000000000000";
+      const adPayload = mapToAdPayload(item, task.userId.toString(), expertPhone, expertName, catId);
+
+      if (!isAdValid(adPayload)) {
+        skipCount++;
+        errorLog.push({ row: identifier, index: index + 1, type: "skip", message: "اطلاعات کافی نیست" });
+        processedCount++;
+        await maybeSaveTask();
+        return;
+      }
+
+      if (Array.isArray(adPayload.images) && adPayload.images.length > 0) {
+        adPayload.images = await processAdImages(adPayload.images, index);
+      }
+
+      adDocs.push(adPayload);
+      auditLogDocs.push({
+        userId: task.userId,
+        action: AuditAction.AD_CREATED,
+        resource: "Ad",
+        resourceId: null,
+        description: `کارشناس ${expertName} آگهی فله‌ای «${adPayload.title}» را ایجاد کرد.`,
+        metadata: { source: adPayload.source, originalId: adPayload.sourceId },
+        createdAt: new Date(),
+      });
+      successCount++;
+    } catch (itemErr: any) {
+      errorCount++;
+      errorLog.push({ row: identifier, index: index + 1, type: "error", message: itemErr.message });
+    } finally {
+      processedCount++;
+      await maybeSaveTask();
+    }
+  });
+
+  if (adDocs.length > 0) {
+    const insertedAds = await Ad.insertMany(adDocs, { ordered: false });
+    auditLogDocs.forEach((log, idx) => {
+      if (insertedAds[idx]) log.resourceId = insertedAds[idx]._id;
+    });
+  }
+  if (auditLogDocs.length > 0) {
+    await AuditLog.insertMany(auditLogDocs, { ordered: false });
+  }
+
+  await BulkTask.findByIdAndUpdate(task._id, {
+    $set: {
+      status: "completed",
+      progress: {
+        total: allItems.length,
+        processed: allItems.length,
+        success: successCount,
+        errors: errorCount,
+        skipped: skipCount,
+      },
+      errorLog: errorLog,
+    }
+  });
+
+  await sendNotificationToUser(
+    task.userId.toString(),
+    "تکمیل بارگذاری فله‌ای",
+    `${successCount} آگهی ایجاد شد.${errorCount ? ` (${errorCount} خطا)` : ""}${skipCount ? ` (${skipCount} رد شده)` : ""}`,
+    "info",
+    "/panel/expert/bulk-upload",
+    { success: successCount, errors: errorCount, skipped: skipCount }
+  );
 }
