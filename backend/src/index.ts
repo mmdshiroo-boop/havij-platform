@@ -78,7 +78,7 @@ app.use(cookieParser());
 app.use(
   fileUpload({
     createParentPath: true,
-    limits: { fileSize: 200 * 1024 * 1024 }, // ۲۰۰ مگابایت 
+    limits: { fileSize: 50 * 1024 * 1024 }, // ۵۰ مگابایت
     useTempFiles: false,
     abortOnLimit: true,
   }),
