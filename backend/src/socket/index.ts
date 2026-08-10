@@ -13,6 +13,7 @@ export const initSocket = (server: Server) => {
     },
   });
 
+  // احراز هویت سوکت
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) return next(new Error("Authentication error"));
@@ -28,10 +29,12 @@ export const initSocket = (server: Server) => {
   io.on("connection", (socket) => {
     const userId = socket.data.userId;
     if (userId) {
+      // جوین شدن کاربر به روم شخصی خودش
       socket.join(`user_${userId}`);
       console.log(`✅ User ${userId} connected (socket: ${socket.id})`);
     }
 
+    // چت و مکالمات
     socket.on("join-conversation", (conversationId: string) => {
       socket.join(`conversation_${conversationId}`);
       console.log(`User ${userId} joined conversation ${conversationId}`);
@@ -45,6 +48,7 @@ export const initSocket = (server: Server) => {
       console.log(`❌ User ${userId} disconnected`);
     });
 
+    // تایپینگ
     socket.on("typing", (conversationId: string) => {
       socket.to(`conversation_${conversationId}`).emit("user-typing", {
         userId: socket.data.userId,
@@ -63,6 +67,10 @@ export const initSocket = (server: Server) => {
   return io;
 };
 
+// ══════════════════════════════════════════════
+// توابع کمکی ارسال آنی (Helpers)
+// ══════════════════════════════════════════════
+
 export const sendRealTimeMessage = (
   receiverId: string,
   message: any,
@@ -79,6 +87,13 @@ export const sendRealTimeMessage = (
 export const sendRealTimeNotification = (userId: string, notification: any) => {
   if (io) {
     io.to(`user_${userId}`).emit("new-notification", notification);
+  }
+};
+
+// 🆕 تابع کمکی برای ارسال پیشرفت تزریق فله‌ای
+export const sendBulkProgress = (userId: string, data: any) => {
+  if (io) {
+    io.to(`user_${userId}`).emit("bulk-progress", data);
   }
 };
 

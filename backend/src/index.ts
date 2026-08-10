@@ -11,6 +11,7 @@ import swaggerUi from "swagger-ui-express";
 import { connectDB } from "./config/db";
 import { specs } from "./config/swagger";
 import { initSocket } from "./socket";
+import { startBulkWorker } from "./controllers/bulkAd.controller";
 
 // میدل‌ورها
 import { apiLogger } from "./middleware/apiLogger.middleware";
@@ -174,6 +175,12 @@ const PORT = parseInt(process.env.PORT || "5001", 10);
 const startServer = async () => {
   try {
     await connectDB();
+    console.log("✅ Database connected successfully.");
+
+    // 🟢 راه‌اندازی Worker پردازش فله‌ای (بعد از دیتابیس، قبل از سرور)
+    startBulkWorker();
+    console.log("🔄 Bulk worker started in background.");
+
     const server = http.createServer(app);
     initSocket(server);
     server.listen(PORT, "0.0.0.0", () =>

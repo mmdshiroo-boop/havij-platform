@@ -2,17 +2,18 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IBulkTask extends Document {
   userId: mongoose.Types.ObjectId;
-  status: "processing" | "completed" | "failed";
-  totalItems: number;
-  processed: number;
-  results: {
+  fileName: string;
+  originalName: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  progress: {
+    total: number;
+    processed: number;
     success: number;
     errors: number;
     skipped: number;
-    watermarkApplied: number;
-    details: any[];
   };
-  error?: string;
+  errorLog: { row: string; index: number; message: string }[];
+  result: any;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,21 +21,28 @@ export interface IBulkTask extends Document {
 const BulkTaskSchema = new Schema<IBulkTask>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    fileName: { type: String, required: true },
+    originalName: { type: String, required: true },
     status: {
       type: String,
-      enum: ["processing", "completed", "failed"],
-      default: "processing",
-    },filePath: { type: String },
-    totalItems: { type: Number, required: true },
-    processed: { type: Number, default: 0 },
-    results: {
+      enum: ["pending", "processing", "completed", "failed"],
+      default: "pending",
+    },
+    progress: {
+      total: { type: Number, default: 0 },
+      processed: { type: Number, default: 0 },
       success: { type: Number, default: 0 },
       errors: { type: Number, default: 0 },
       skipped: { type: Number, default: 0 },
-      watermarkApplied: { type: Number, default: 0 },
-      details: { type: Array, default: [] },
     },
-    error: { type: String },
+    errorLog: [
+      {
+        row: String,
+        index: Number,
+        message: String,
+      },
+    ],
+    result: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );

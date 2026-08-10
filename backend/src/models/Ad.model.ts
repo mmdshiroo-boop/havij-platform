@@ -471,7 +471,7 @@ const AdSchema = new Schema<IAd>(
       default: "pending",
     },
     isUrgent: { type: Boolean, default: false },
-    urgentExpiry: { type: Date, default: null }, // ✅ تاریخ انقضای فوری
+    urgentExpiry: { type: Date, default: null }, 
     isVerified: { type: Boolean, default: false },
     rejectReason: { type: String },
     flagReason: { type: String },
@@ -540,7 +540,7 @@ AdSchema.index({ "amenities.sauna": 1 });
 AdSchema.index({ documentType: 1 });
 AdSchema.index({ landWidth: 1 });
 AdSchema.index({ landLength: 1 });
-
+AdSchema.index({ source: 1, sourceId: 1 }, { unique: true, sparse: true });
 // Virtual
 AdSchema.virtual("shortDescription").get(function (this: IAd) {
   return this.description.length > 200
