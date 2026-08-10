@@ -6,12 +6,15 @@ import jwt from "jsonwebtoken";
 let io: SocketServer;
 
 export const initSocket = (server: Server) => {
-  io = new SocketServer(server, {
-    cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
-      credentials: true,
-    },
-  });
+io = new SocketServer(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  },
+  // اضافه کردن این دو
+  pingInterval: 25000,  // هر ۲۵ ثانیه ping
+  pingTimeout: 60000,   // ۶۰ ثانیه مهلت
+});
 
   // احراز هویت سوکت
   io.use((socket, next) => {
